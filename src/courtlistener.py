@@ -184,7 +184,7 @@ def build_complaint_documents_from_hits(hits: List[dict], days: int = 3) -> List
             continue
 
         # complaint 우선 + 없으면 최근 문서 1~2개라도 힌트로 남기기
-        complaint_docs = [d for d in recap_docs if _is_complaint(d)]
+        complaint_docs, mode = pick_recap_documents_with_fallback(recap_docs)
         if not complaint_docs:
             complaint_docs = sorted(recap_docs, key=lambda x: _safe_str(x.get("date_filed") or x.get("dateFiled")), reverse=True)[:2]
 
@@ -327,3 +327,30 @@ def build_case_summaries_from_hits(hits: List[dict]) -> List[CLCaseSummary]:
 
     uniq = {s.docket_id: s for s in summaries}
     return list(uniq.values())
+
+def _is_key_non_complaint(doc: dict) -> bool:
+    """Complaint가 없을 때 보조로 포함할 '핵심 문서' 필터.
+    - Motion to Dismiss / TRO / PI / Summary Judgment 등
+    - Order / Opinion / Judgment 등
+    """
+    sd = (_safe_str(doc.get("short_description") or doc.get("shortDescription") or "")).lower()
+    desc = (_safe_str(doc.get("description") or doc.get("text") or "")).lower()
+    doc_type = (_safe_str(doc.get("document_type") or doc.get("documentType") or "")).lower()
+    hay = " ".join([sd, desc, doc_type])
+    keys = [
+        "motion to dismiss", "motion", "t.r.o", "tro", "temporary restraining", "preliminary injunction",
+        "summary judgment", "motion for", "opposition", "reply", "memorandum", "brief",
+        "order", "opinion", "judgment", "report and recommendation", "r&r", "recommendation",
+        "stipulation", "settlement",
+    ]
+    return any(k in hay for k in keys)
+
+def pick_recap_documents_with_fallback(recap_docs: list[dict]) -> tuple[list[dict], str]:
+    """1) Complaint 우선. 2) 없으면 Motion/Order/Opinion 등 핵심 문서로 fallback.
+    반환: (선택된 문서 리스트, 모드 문자열)
+    """
+    complaint_docs = [d for d in recap_docs if _is_complaint(d)]
+    if complaint_docs:
+        return complaint_docs, "complaint"
+    key_docs = [d for d in recap_docs if _is_key_non_complaint(d)]
+    return key_docs, "fallback"

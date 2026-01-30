@@ -50,7 +50,7 @@ def render_markdown(lawsuits: List[Lawsuit], cl_docs: List[CLDocument], cl_cases
         lines.append("\n")
 
     if cl_docs:
-        lines.append("### RECAP 문서 기반 (Complaint/Petition 우선, 문서 단위 정밀 추출)")
+        lines.append("### RECAP 문서 기반 (Complaint/Petition 우선, 없으면 Motion/Order 등 핵심 문서로 보조 수집)")
         lines.append("| 문서 제출일 | 케이스명 | 도켓번호 | 법원 | 문서유형 | 원고(추출) | 피고(추출) | 청구원인(추출) | AI학습 핵심문장(추출) | 문서 링크 |")
         lines.append("|---|---|---|---|---|---|---|---|---|---|")
         for d in sorted(cl_docs, key=lambda x: x.date_filed, reverse=True)[:20]:
