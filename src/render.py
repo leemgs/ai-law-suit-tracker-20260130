@@ -160,6 +160,7 @@ def render_markdown(
             )
 
         lines.append("")
+        
     # ⚖️ RECAP 케이스
     if cl_cases:
 
@@ -223,7 +224,7 @@ def render_markdown(
         lines.append("</details>\n")
 
 
-    # 📄 RECAP 문서
+    # 📄 RECAP 법원 문서 (*.pdf 포맷의 문서가 존재한다면 다운로드 가능한 문서 주소 표기)
     if cl_docs:
         lines.append("## 📄 RECAP: 문서 기반 (Complaint/Petition 우선)")
         lines.append("| 제출일 | 케이스 | 문서유형 | 문서 |")
