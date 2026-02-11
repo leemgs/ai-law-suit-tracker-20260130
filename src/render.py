@@ -35,25 +35,21 @@ def _short(val: str, limit: int = 140) -> str:
 
 
 # =====================================================
-# 🔥 AI 학습 위험도 점수 계산
+# 🔥 위험도 점수 계산 (뉴스용 예측)
 # =====================================================
-def calculate_ai_risk_score(case: CLCaseSummary) -> int:
+def calculate_news_risk_score(title: str, reason: str) -> int:
     score = 0
-    text = f"{case.extracted_ai_snippet or ''} {case.extracted_causes or ''}".lower()
+    text = f"{title or ''} {reason or ''}".lower()
 
-    if any(k in text for k in ["scrape", "crawl", "ingest", "harvest"]):
+    if any(k in text for k in ["scrape", "crawl", "unauthorised", "unauthorized"]):
         score += 30
-
-    if any(k in text for k in ["train", "training", "model", "llm", "neural"]):
+    if any(k in text for k in ["train", "training", "model", "llm"]):
         score += 30
-
-    if any(k in text for k in ["commercial", "profit", "monetize"]):
-        score += 15
-
-    if case.nature_of_suit and "820" in case.nature_of_suit:
-        score += 15
-
-    if "class action" in text:
+    if any(k in text for k in ["copyright", "dmca", "infringement"]):
+        score += 20
+    if any(k in text for k in ["class action"]):
+        score += 10
+    if any(k in text for k in ["billion", "$"]):
         score += 10
 
     return min(score, 100)
@@ -67,19 +63,6 @@ def format_risk(score: int) -> str:
     if score >= 40:
         return f"🟡 {score}"
     return f"🟢 {score}"
-
-
-def classify_data_type(text: str) -> str:
-    text = (text or "").lower()
-    if any(k in text for k in ["book", "text", "novel"]):
-        return "텍스트/도서"
-    if any(k in text for k in ["image", "photo", "picture"]):
-        return "이미지"
-    if any(k in text for k in ["code", "repository", "github"]):
-        return "소스코드"
-    if any(k in text for k in ["music", "audio"]):
-        return "음원"
-    return "미확인"
 
 
 def render_markdown(
@@ -102,99 +85,58 @@ def render_markdown(
     lines.append(f"| 📄 RECAP 문서 | **{len(cl_docs)}** |\n")
 
     # =====================================================
-    # 📊 Nature 통계
-    # =====================================================
-    if cl_cases:
-        counter = Counter([c.nature_of_suit or "미확인" for c in cl_cases])
-        lines.append("## 📊 Nature of Suit 통계\n")
-        lines.append("| Nature of Suit | 건수 |")
-        lines.append("|---|---|")
-        for k, v in counter.most_common(10):
-            lines.append(f"| {_esc(k)} | **{v}** |")
-        lines.append("")
-
-    # =====================================================
-    # ⚖️ RECAP 케이스
-    # =====================================================
-    if cl_cases:
-
-        copyright_cases = []
-        other_cases = []
-
-        for c in cl_cases:
-            nature = (c.nature_of_suit or "").lower()
-            if "820" in nature and "copyright" in nature:
-                copyright_cases.append(c)
-            else:
-                other_cases.append(c)
-
-        def render_ai_table(cases):
-            lines.append("| 상태 | 케이스명 | 도켓번호 | 데이터 유형 | AI 학습 핵심 주장 | 법적 근거 | 위험도 | 판사 | 법원 |")
-            lines.append(_md_sep(9))
-
-            for c in sorted(cases, key=lambda x: x.date_filed, reverse=True)[:25]:
-
-                docket_url = f"https://www.courtlistener.com/docket/{c.docket_id}/"
-                score = calculate_ai_risk_score(c)
-                risk_display = format_risk(score)
-                data_type = classify_data_type(c.extracted_ai_snippet)
-
-                lines.append(
-                    f"| {_esc(c.status)} | "
-                    f"{_mdlink(c.case_name, docket_url)} | "
-                    f"{_mdlink(c.docket_number, docket_url)} | "
-                    f"{data_type} | "
-                    f"{_short(c.extracted_ai_snippet, 120)} | "
-                    f"{_esc(c.cause)} | "
-                    f"{risk_display} | "
-                    f"{_esc(c.judge)} | "
-                    f"{_esc(c.court)} |"
-                )
-
-        # 🔥 820
-        lines.append("## 🔥 820 Copyright (AI 학습 쟁점 중심)\n")
-        if copyright_cases:
-            render_ai_table(copyright_cases)
-        else:
-            lines.append("820 사건 없음\n")
-
-        # 📁 Others
-        lines.append("\n<details>")
-        lines.append(
-            '<summary><span style="font-size:1.5em; font-weight:bold;">📁 Others</span></summary>\n'
-        )
-
-        if other_cases:
-            render_ai_table(other_cases)
-        else:
-            lines.append("Others 사건 없음\n")
-
-        lines.append("</details>\n")
-
-    # =====================================================
-    # 📰 기사 주소
+    # 📰 뉴스/RSS 기반 소송 요약 + 위험도 예측
     # =====================================================
     if lawsuits:
-        lines.append("<details>")
-        lines.append(
-            '<summary><span style="font-size:1.5em; font-weight:bold;">📰 기사 주소</span></summary>\n'
-        )
+        lines.append("## 📰 뉴스/RSS 기반 소송 요약")
+        lines.append("| 일자 | 제목 | 소송번호 | 사유 | 위험도 예측 점수 |")
+        lines.append(_md_sep(5))
 
         for s in lawsuits:
+
             if (s.case_title and s.case_title != "미확인") and (
                 s.article_title and s.article_title != s.case_title
             ):
-                header_title = f"{s.case_title} / {s.article_title}"
+                display_title = f"{s.case_title} / {s.article_title}"
             elif s.case_title and s.case_title != "미확인":
-                header_title = s.case_title
+                display_title = s.case_title
             else:
-                header_title = s.article_title or s.case_title
+                display_title = s.article_title or s.case_title
 
-            lines.append(f"### {_esc(header_title)}")
-            for u in s.article_urls:
-                lines.append(f"- {u}")
-            lines.append("")
+            article_url = s.article_urls[0] if getattr(s, "article_urls", None) else ""
+            title_cell = _mdlink(display_title, article_url)
 
-        lines.append("</details>\n")
+            risk_score = calculate_news_risk_score(display_title, s.reason)
+            risk_display = format_risk(risk_score)
+
+            lines.append(
+                f"| {_esc(s.update_or_filed_date)} | "
+                f"{title_cell} | "
+                f"{_esc(s.case_number)} | "
+                f"{_short(s.reason)} | "
+                f"{risk_display} |"
+            )
+
+        lines.append("")
+
+    # =====================================================
+    # 📘 AI 학습 위험도 점수 평가 척도 (Fold)
+    # =====================================================
+    lines.append("<details>")
+    lines.append(
+        '<summary><span style="font-size:1.2em; font-weight:bold;">📘 AI 학습 위험도 점수(0~100) 평가 척도</span></summary>\n'
+    )
+    lines.append("- 0~39 🟢 : AI 학습과 간접적 연관")
+    lines.append("- 40~59 🟡 : AI 학습 관련 쟁점 존재")
+    lines.append("- 60~79 ⚠️ : AI 모델 학습 직접 언급 및 저작권 분쟁")
+    lines.append("- 80~100 🔥 : 무단 수집 + 모델 학습 + 상업적 사용 + 대규모 손해배상 등 고위험 사건")
+    lines.append("")
+    lines.append("### 📊 점수 산정 기준")
+    lines.append("- 무단 수집(scrape/crawl 등) +30")
+    lines.append("- 모델 학습(train/model/LLM 등) +30")
+    lines.append("- 저작권 침해 +20")
+    lines.append("- 집단소송 +10")
+    lines.append("- 고액 손해배상 언급 +10")
+    lines.append("</details>\n")
 
     return "\n".join(lines)
