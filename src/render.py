@@ -160,7 +160,6 @@ def render_markdown(
             )
 
         lines.append("")
-
     # ⚖️ RECAP 케이스
     if cl_cases:
 
@@ -174,8 +173,13 @@ def render_markdown(
                 other_cases.append(c)
 
         def render_case_table(cases):
-            lines.append("| 상태 | 케이스명 | 도켓번호 | Nature | 위험도 |")
-            lines.append(_md_sep(5))
+
+            lines.append(
+                "| 상태 | 케이스명 | 도켓번호 | Nature | 위험도 | "
+                "소송이유 | AI학습관련 핵심주장 | 법적 근거 | 담당판사 | 법원 | "
+                "Complaint 문서 번호 | Complaint PDF 링크 | 최근 도켓 업데이트 |"
+            )
+            lines.append(_md_sep(13))
 
             for c in sorted(cases, key=lambda x: x.date_filed, reverse=True):
 
@@ -189,7 +193,15 @@ def render_markdown(
                     f"{_mdlink(c.case_name, docket_url)} | "
                     f"{_mdlink(c.docket_number, docket_url)} | "
                     f"{_esc(c.nature_of_suit)} | "
-                    f"{format_risk(score)} |"
+                    f"{format_risk(score)} | "
+                    f"{_short(c.extracted_causes, 120)} | "
+                    f"{_short(c.extracted_ai_snippet, 120)} | "
+                    f"{_esc(c.cause)} | "
+                    f"{_esc(c.judge)} | "
+                    f"{_esc(c.court)} | "
+                    f"{_esc(c.complaint_doc_no)} | "
+                    f"{_mdlink('PDF', c.complaint_link)} | "
+                    f"{_esc(c.recent_updates)} |"
                 )
 
         lines.append("## 🔥 RECAP: 820 Copyright\n")
@@ -199,12 +211,17 @@ def render_markdown(
             lines.append("820 사건 없음\n")
 
         lines.append("\n<details>")
-        lines.append('<summary><strong><span style="font-size:2.5em; font-weight:bold;">📁 RECAP: Others</span></strong></summary>\n')
+        lines.append(
+            '<summary><strong><span style="font-size:2.5em; font-weight:bold;">📁 RECAP: Others</span></strong></summary>\n'
+        )
+
         if other_cases:
             render_case_table(other_cases)
         else:
             lines.append("Others 사건 없음\n")
+
         lines.append("</details>\n")
+
 
     # 📄 RECAP 문서
     if cl_docs:
