@@ -48,6 +48,12 @@ class CLCaseSummary:
     case_name: str
     docket_number: str
     court: str
+    court_short_name: str
+    court_api_url: str
+    docket_id: int
+    case_name: str
+    docket_number: str
+    court: str
     date_filed: str
     status: str
     judge: str
@@ -161,6 +167,14 @@ def _pick_docket_id(hit: dict) -> Optional[int]:
     return None
 
 def _safe_str(x) -> str:
+def _build_court_meta(court_raw: str) -> tuple[str, str]:
+    court_raw = _safe_str(court_raw)
+    if not court_raw or court_raw == "미확인":
+        return "미확인", ""
+    short_name = court_raw
+    api_url = f"https://www.courtlistener.com/api/rest/v3/courts/{court_raw}/"
+    return short_name, api_url
+
     return (str(x).strip() if x is not None else "")
 
 def fetch_docket(docket_id: int) -> Optional[dict]:
