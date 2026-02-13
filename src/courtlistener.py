@@ -412,83 +412,31 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
     complaint_doc_no = "미확인"
     complaint_link = ""
     complaint_type = "미확인"
-    # 🔥 Always try HTML parsing regardless of docket-entry results
-    html_pdf_url = _extract_first_pdf_from_docket_html(docket_id)
-
     extracted_causes = "미확인"
     extracted_ai_snippet = ""    
     
-    url = DOCKET_ENTRIES_URL
-    params = {"docket": docket_id, "page_size": 100}
+    # ======================================================
+    # 🔥 NEW SIMPLIFIED LOGIC
+    # HTML 페이지에서 첫 번째 PDF 직접 추출 (API 불필요)
+    # ======================================================
+ 
+    html_pdf_url = _extract_first_pdf_from_docket_html(docket_id)
 
-    found_entries = []
-
-    while url:
-        data = _get(url, params=params) if params else _get(url)
-        params = None
-        if not data:
-            break
-
-        for e in data.get("results", []):
-            desc = " ".join([
-                _safe_str(e.get("description")),
-                _safe_str(e.get("docket_text")),
-                _safe_str(e.get("text"))
-            ]).lower()
-
-            if any(k in desc for k in COMPLAINT_KEYWORDS):
-                found_entries.append(e)
-
-        url = data.get("next")
-        
-    if found_entries:
-        found_entries.sort(
-            key=lambda x: _safe_str(x.get("date_filed")),
-            reverse=True
-        )
-
-        latest = found_entries[0]
-        
-        # Try to get entry_number from docket entry as fallback
-        complaint_doc_no = _safe_str(latest.get("entry_number")) or "미확인"
-        desc_text = _safe_str(latest.get("description"))
-        complaint_type = _detect_complaint_type(desc_text)
-
-        # --------------------------------------------------
-        # NEW LOGIC: Parse HTML to get first PDF link
-        # --------------------------------------------------
-        # Use HTML PDF first if available
-        pdf_url = html_pdf_url
-
-        if pdf_url:
-            complaint_link = f"[PDF]({pdf_url})"
-
-            snippet = extract_pdf_text(pdf_url, max_chars=4000)
-            if snippet:
-                extracted_ai_snippet = extract_ai_training_snippet(snippet) or ""
-                causes_list = detect_causes(snippet)
-                extracted_causes = ", ".join(causes_list) if causes_list else "미확인"
-                # ----------------------------------------
-
-        # Fallback: RECAP PDF 없으면 docket entry 링크 사용
-
-        if not complaint_link:
-            complaint_link = _abs_url(latest.get("absolute_url") or "")
-
-    # --------------------------------------------------
-    # 🔥 NEW: Even if docket-entry didn't detect complaint,
-    # fallback to HTML-based PDF detection
-    # --------------------------------------------------
-
-    if not complaint_link and html_pdf_url:
+    if html_pdf_url:
         complaint_link = f"[PDF]({html_pdf_url})"
+        complaint_doc_no = "1"  # 첫 번째 문서 기준
+        complaint_type = "Original"
 
         snippet = extract_pdf_text(html_pdf_url, max_chars=4000)
         if snippet:
             extracted_ai_snippet = extract_ai_training_snippet(snippet) or ""
             causes_list = detect_causes(snippet)
-            extracted_causes = ", ".join(causes_list) if causes_list else "미확인"    
-    # --------------------------------------------------
+            extracted_causes = ", ".join(causes_list) if causes_list else "미확인"
+
+    else:
+        complaint_link = ""
+        complaint_doc_no = "미확인"
+        complaint_type = "미확인"
 
     return CLCaseSummary(
         docket_id=docket_id,
