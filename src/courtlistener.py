@@ -262,6 +262,27 @@ def build_complaint_documents_from_hits(
 
         recap = _get(RECAP_DOCS_URL, params={"docket": did}) or {}
         docs = recap.get("results", [])
+        # --------------------------------------------------
+        # 🔥 안정화: docket_entry 기반이 아니라 docket 전체 기준으로 RECAP 조회
+        # --------------------------------------------------
+
+        recap = _get(
+            RECAP_DOCS_URL,
+            params={
+                "docket": docket_id,
+                "page_size": 100
+            }
+        ) or {}
+
+        docs = recap.get("results", [])
+
+        # description 기준으로 complaint 재필터링
+        complaint_docs = []
+
+        for d in docs:
+            desc = _safe_str(d.get("description")).lower()
+            if any(k in desc for k in COMPLAINT_KEYWORDS):
+                complaint_docs.append(d)        
 
         for d in docs:
             desc = _safe_str(d.get("description")).lower()
@@ -408,9 +429,16 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
         recap = _get(RECAP_DOCS_URL, params={"docket_entry": entry_id}) or {}
         docs = recap.get("results", [])
 
-        if docs:
-            # Extract document number and PDF from the first RECAP document
-            first_doc = docs[0]
+        if complaint_docs:
+
+            # 최신 Complaint 기준 정렬
+            complaint_docs.sort(
+                key=lambda x: _safe_str(x.get("date_filed")),
+                reverse=True
+            )
+
+            first_doc = complaint_docs[0]
+            
             doc_num = _safe_str(first_doc.get("document_number"))
             if doc_num:
                 complaint_doc_no = doc_num
@@ -419,7 +447,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
             if pdf_path:
                 complaint_link = _abs_url(pdf_path)
 
-        # Fallback to docket entry URL if no PDF link found
+        # Fallback: RECAP PDF 없으면 docket entry 링크 사용
 
         if not complaint_link:
             complaint_link = _abs_url(latest.get("absolute_url") or "")
