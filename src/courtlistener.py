@@ -260,26 +260,25 @@ def build_complaint_documents_from_hits(
         docket_number = _safe_str(docket.get("docket_number")) or "미확인"
         court = _safe_str(docket.get("court")) or "미확인"
 
-        recap = _get(RECAP_DOCS_URL, params={"docket": did}) or {}
-        docs = recap.get("results", [])
         # --------------------------------------------------
-        # 🔥 안정화: docket_entry 기반이 아니라 docket 전체 기준으로 RECAP 조회
+        # 안정화: docket 전체 기준 RECAP pagination 조회
         # --------------------------------------------------
+        docs = []
+        url = RECAP_DOCS_URL
+        params = {"docket": did, "page_size": 100}
 
-        recap = _get(
-            RECAP_DOCS_URL,
-            params={
-                "docket": docket_id,
-                "page_size": 100
-            }
-        ) or {}
-
-        docs = recap.get("results", [])
+        while url:
+            data = _get(url, params=params) if params else _get(url)
+            params = None
+            if not data:
+                break
+            docs.extend(data.get("results", []))
+            url = data.get("next")
 
         # description 기준으로 complaint 재필터링
         complaint_docs = []
 
-        for d in docs:
+        for d in complaint_docs:
             desc = _safe_str(d.get("description")).lower()
             if any(k in desc for k in COMPLAINT_KEYWORDS):
                 complaint_docs.append(d)        
@@ -390,7 +389,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
     url = DOCKET_ENTRIES_URL
     params = {"docket": docket_id, "page_size": 100}
 
-    complaints = []
+    complaint_docs = []
 
     while url:
         data = _get(url, params=params) if params else _get(url)
@@ -426,8 +425,8 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
 
         entry_id = latest.get("id")
 
-        recap = _get(RECAP_DOCS_URL, params={"docket_entry": entry_id}) or {}
-        docs = recap.get("results", [])
+        recap = _get(RECAP_DOCS_URL, params={"docket_entry": entry_id, "page_size": 100}) or {}
+        complaint_docs = recap.get("results", [])
 
         if complaint_docs:
 
