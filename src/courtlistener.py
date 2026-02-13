@@ -411,7 +411,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
 
         latest = found_entries[0]
         
-        # Keep document number as "미확인" as per requirements
+        # Keep document number as "미확인" to simplify display and avoid exposing internal document IDs
         complaint_doc_no = "미확인"
         desc_text = _safe_str(latest.get("description"))
         complaint_type = _detect_complaint_type(desc_text)
