@@ -382,7 +382,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
     url = DOCKET_ENTRIES_URL
     params = {"docket": docket_id, "page_size": 100}
 
-    complaint_docs = []
+    found_entries = []
 
     while url:
         data = _get(url, params=params) if params else _get(url)
@@ -398,18 +398,19 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
             ]).lower()
 
             if any(k in desc for k in COMPLAINT_KEYWORDS):
-                complaint_docs.append(e)
+                found_entries.append(e)
 
         url = data.get("next")
 
         
     if complaint_docs:
-        complaint_docs.sort(
+    if found_entries:
+        found_entries.sort(
             key=lambda x: _safe_str(x.get("date_filed")),
             reverse=True
         )
 
-        latest = complaint_docs[0]
+        latest = found_entries[0]
         
         # Try to get entry_number from docket entry as fallback
         complaint_doc_no = _safe_str(latest.get("entry_number")) or "미확인"
@@ -419,17 +420,17 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
         entry_id = latest.get("id")
 
         recap = _get(RECAP_DOCS_URL, params={"docket_entry": entry_id, "page_size": 100}) or {}
-        complaint_docs = recap.get("results", [])
+        actual_docs = recap.get("results", [])
 
-        if complaint_docs:
+        if actual_docs:
 
             # 최신 Complaint 기준 정렬
-            complaint_docs.sort(
+            actual_docs.sort(
                 key=lambda x: _safe_str(x.get("date_filed")),
                 reverse=True
             )
 
-            first_doc = complaint_docs[0]
+            first_doc = actual_docs[0]
             
             doc_num = _safe_str(first_doc.get("document_number"))
             if doc_num:
