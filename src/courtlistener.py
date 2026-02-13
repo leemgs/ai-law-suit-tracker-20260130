@@ -286,7 +286,7 @@ def build_complaint_documents_from_hits(
                 try:
                     dt = datetime.fromisoformat(date_filed).replace(tzinfo=timezone.utc)
                     if dt < cutoff:
-                        continue
+                    continue
                 except Exception:
                     pass
 
