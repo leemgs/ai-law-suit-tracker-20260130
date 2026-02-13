@@ -437,6 +437,15 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
             pdf_path = first_doc.get("filepath_local") or ""
             if pdf_path:
                 complaint_link = _abs_url(pdf_path)
+                
+                # --- NEW EXTRACTION LOGIC FOR SUMMARY ---
+                # This triggers the PDF reader to get the AI snippets
+                snippet = extract_pdf_text(complaint_link, max_chars=4000)
+                if snippet:
+                    extracted_ai_snippet = extract_ai_training_snippet(snippet)
+                    causes_list = detect_causes(snippet)
+                    extracted_causes = ", ".join(causes_list) if causes_list else "미확인"
+                # ----------------------------------------
 
         # Fallback: RECAP PDF 없으면 docket entry 링크 사용
 
@@ -463,7 +472,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
         complaint_link=complaint_link,
         complaint_type=complaint_type,
         recent_updates=recent_updates,
-        extracted_causes="미확인",
-        extracted_ai_snippet="",
+        extracted_causes=locals().get('extracted_causes', "미확인"),
+        extracted_ai_snippet=locals().get('extracted_ai_snippet', ""),
     )
 
