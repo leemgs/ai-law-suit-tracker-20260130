@@ -195,18 +195,18 @@ def render_markdown(
             lines.append(_md_sep(14))
 
             for idx, c in enumerate(sorted(cases, key=lambda x: x.date_filed, reverse=True), start=1):
-            # 🔥 최근 도켓 업데이트 기준 내림차순 정렬
-            sorted_cases = sorted(
-                cases,
-                key=lambda x: x.recent_updates or "",
-                reverse=True
-            )
+                # 최근 도켓 업데이트 기준 내림차순 정렬
+                sorted_cases = sorted(
+                    cases,
+                    key=lambda x: x.recent_updates or "",
+                    reverse=True
+                )
 
             for idx, c in enumerate(sorted_cases, start=1):                
                 slug = _slugify_case_name(c.case_name)
                 docket_url = f"https://www.courtlistener.com/docket/{c.docket_id}/{slug}/"
       
-                # 🔥 CLDocument 기반 Complaint 정보 덮어쓰기
+                # CLDocument 기반 Complaint 정보 덮어쓰기
                 complaint_doc_no = c.complaint_doc_no
                 complaint_link = c.complaint_link
                 extracted_causes = c.extracted_causes
@@ -218,14 +218,14 @@ def render_markdown(
                     doc = doc_map[c.docket_id]
                     complaint_doc_no = doc.doc_number or doc.doc_type
                     complaint_link = doc.document_url or doc.pdf_url
-                    # 🔥 FIX: 소송이유 / AI학습 핵심주장도 CLDocument 기준으로 덮어쓰기
+                    # FIX: 소송이유 / AI학습 핵심주장도 CLDocument 기준으로 덮어쓰기
                     extracted_causes = doc.extracted_causes or extracted_causes
                     extracted_ai_snippet = doc.extracted_ai_snippet or extracted_ai_snippet
 
-                    # 🔥 위험도 재계산: CLDocument 기준
+                    # 위험도 재계산: CLDocument 기준
                     score_source_text = f"{extracted_ai_snippet} {extracted_causes}".lower()
 
-                # 🔥 NEW: 텍스트 기반 직접 점수 계산 (CLDocument 우선 반영)
+                # NEW: 텍스트 기반 직접 점수 계산 (CLDocument 우선 반영)
                 temp_case = c
                 temp_case.extracted_ai_snippet = extracted_ai_snippet
                 temp_case.extracted_causes = extracted_causes
@@ -237,7 +237,7 @@ def render_markdown(
                     court_display = _esc(c.court)
 
                 # =====================================================
-                # 🔥 FIX: Complaint PDF 링크 표시 규칙
+                # FIX: Complaint PDF 링크 표시 규칙
                 # - 링크 존재 시: 📄 아이콘 출력
                 # - 링크 없으면: "-"
                 # =====================================================
@@ -247,7 +247,7 @@ def render_markdown(
                     complaint_link_display = "None"
 
                 # =====================================================
-                # 🔥 NEW: RECAP 테이블 로그 출력
+                # NEW: RECAP 테이블 로그 출력
                 # =====================================================
                 print("[DEBUG] RECAP row added:")
                 print(f"        case={c.case_name}")
@@ -297,7 +297,7 @@ def render_markdown(
         lines.append("| No. | 제출일 | 케이스 | 문서유형 | 법원 문서 |")
         lines.append(_md_sep(5))
 
-        # 🔥 제출일 기준 내림차순 정렬
+        # 제출일 기준 내림차순 정렬
         sorted_docs = sorted(
             cl_docs,
             key=lambda x: x.date_filed or "",
