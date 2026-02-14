@@ -522,7 +522,21 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
     # ======================================================
  
     html_pdf_url = _extract_first_pdf_from_docket_html(docket_id)
-
+    
+    # 🔥 NEW FIX:
+    # RECAP API 실패 상황에서도 complaint_link 항상 세팅
+    if not html_pdf_url:
+        # 혹시 RECAP 문서가 있었는지 직접 확인
+        recap_data = _get(RECAP_DOCS_URL, params={"docket": docket_id, "page_size": 5})
+        if recap_data:
+            for d in recap_data.get("results", []):
+                desc = _safe_str(d.get("description")).lower()
+                if any(k in desc for k in COMPLAINT_KEYWORDS):
+                    html_pdf_url = _abs_url(d.get("filepath_local") or "")
+                    complaint_doc_no = _safe_str(d.get("document_number")) or "1"
+                    complaint_type = _detect_complaint_type(desc)
+                    break 
+    
     if html_pdf_url:
         # 🔥 순수 URL만 저장 (Markdown 생성 금지)
         complaint_link = html_pdf_url
