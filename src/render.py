@@ -145,9 +145,9 @@ def render_markdown(
 
     # 뉴스 테이블
     if lawsuits:
-        print(f"[DEBUG] '뉴스/RSS 기반 소송 요약' is printed.")            
-        lines.append("## 📰 뉴스/RSS 기반 소송 요약")
-        lines.append("| No. | 기사일자⬇️ | 제목 | 소송번호 | 사유 | 위험도 예측 점수 |")
+        print(f"[DEBUG] '외부 기사 기반 소송 요약' is printed.")            
+        lines.append("## 📰 외부 기사 기반 소송 요약")
+        lines.append("| No. | 기사일자⬇️ | 제목 | 소송번호 | 소송사유 | 위험도 예측 점수 |")
         lines.append(_md_sep(6))
 
         for idx, s in enumerate(lawsuits, start=1):
