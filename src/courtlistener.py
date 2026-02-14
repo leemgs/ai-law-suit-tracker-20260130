@@ -142,12 +142,16 @@ def _headers() -> Dict[str, str]:
 
 def _get(url: str, params: Optional[dict] = None) -> Optional[dict]:
     try:
+        print(f"[DEBUG] GET {url} params={params}")        
         r = requests.get(url, params=params, headers=_headers(), timeout=25)
         if r.status_code in (401, 403):
+            print(f"[DEBUG] AUTH ERROR {r.status_code} for {url}")           
             return None
         r.raise_for_status()
+        print(f"[DEBUG] SUCCESS {url} status={r.status_code}")        
         return r.json()
     except Exception:
+        print(f"[DEBUG] EXCEPTION in _get: {e}")        
         return None
 
 
@@ -222,6 +226,7 @@ def _extract_first_pdf_from_docket_html(docket_id: int) -> str:
 # =====================================================
 
 def search_recent_documents(query: str, days: int = 3, max_results: int = 20) -> List[dict]:
+    print(f"[DEBUG] search_recent_documents query='{query}' days={days}")    
     data = _get(
         SEARCH_URL,
         # 🔥 FIX: RECAP 문서 검색(type=r) → 사건 검색(type=ca)
@@ -231,12 +236,15 @@ def search_recent_documents(query: str, days: int = 3, max_results: int = 20) ->
         params={"q": query, "type": "ca", "page_size": max_results},
     )
     if not data:
+        print("[DEBUG] search_recent_documents: no data returned")        
         return []
 
     results = data.get("results", [])
+    print(f"[DEBUG] search results raw count={len(results)}")    
     # 🔥 FIX: 날짜 기준 비교 (시간 제거)
     today = datetime.now(timezone.utc).date()
     cutoff = today - timedelta(days=days)
+    print(f"[DEBUG] cutoff date={cutoff}")
 
     out = []
     for r in results:
@@ -245,11 +253,13 @@ def search_recent_documents(query: str, days: int = 3, max_results: int = 20) ->
             try:
                 dt = datetime.fromisoformat(date_val[:10]).date()
                 if dt < cutoff:
+                    print(f"[DEBUG] filtered by date: {dt} < {cutoff}")                    
                     continue
             except Exception:
+                print(f"[DEBUG] date parse error: {e}")                
                 pass
         out.append(r)
-
+    print(f"[DEBUG] search results after date filter={len(out)}")
     return out
 
 
@@ -290,9 +300,11 @@ def build_case_summaries_from_case_titles(case_titles: List[str]) -> List[CLCase
 
 def build_case_summaries_from_hits(hits: List[dict]) -> List[CLCaseSummary]:
     out = []
+    print(f"[DEBUG] build_case_summaries_from_hits input hits={len(hits)}")    
     for hit in hits:
         did = _pick_docket_id(hit)
         if did:
+            print(f"[DEBUG] found docket_id={did}")            
             s = build_case_summary_from_docket_id(did)
             if s:
                 out.append(s)
@@ -308,6 +320,7 @@ def build_complaint_documents_from_hits(
     days: int = 3
 ) -> List[CLDocument]:
 
+    print(f"[DEBUG] build_complaint_documents_from_hits hits={len(hits)} days={days}")
     out = []
 
     # 🔥 FIX: 날짜 기준 비교 (시간 제거)
@@ -317,6 +330,7 @@ def build_complaint_documents_from_hits(
     for hit in hits:
         did = _pick_docket_id(hit)
         if not did:
+            print("[DEBUG] no docket_id in hit")         
             continue
 
         docket = _get(DOCKET_URL.format(id=did)) or {}
@@ -330,19 +344,22 @@ def build_complaint_documents_from_hits(
         docs = []
         url = RECAP_DOCS_URL
         params = {"docket": did, "page_size": 100}
+        print(f"[DEBUG] fetching RECAP docs for docket={did}")        
 
         while url:
             data = _get(url, params=params) if params else _get(url)
             params = None
             if not data:
+                print("[DEBUG] RECAP pagination returned no data")                
                 break
             docs.extend(data.get("results", []))
             url = data.get("next")
     
-
+        print(f"[DEBUG] total RECAP docs fetched={len(docs)}")
         for d in docs:
             desc = _safe_str(d.get("description")).lower()
             if not any(k in desc for k in COMPLAINT_KEYWORDS):
+                print(f"[DEBUG] skipped non-complaint doc: {desc[:60]}")                
                 continue
 
             date_filed = _safe_str(d.get("date_filed"))[:10]
@@ -350,10 +367,12 @@ def build_complaint_documents_from_hits(
                 try:
                     dt = datetime.fromisoformat(date_filed).date()
                     if dt < cutoff:
+                        print(f"[DEBUG] complaint filtered by date {dt} < {cutoff}")                        
                         continue
                 except Exception:
+                    print(f"[DEBUG] complaint date parse error: {e}")                    
                     pass
-
+            print(f"[DEBUG] complaint accepted docket={did} date={date_filed}")
             pdf_url = _abs_url(d.get("filepath_local") or "")
             snippet = extract_pdf_text(pdf_url, max_chars=3000) if pdf_url else ""
 
