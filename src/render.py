@@ -196,14 +196,15 @@ def render_markdown(
             for c in sorted(cases, key=lambda x: x.date_filed, reverse=True):
                 slug = _slugify_case_name(c.case_name)
                 docket_url = f"https://www.courtlistener.com/docket/{c.docket_id}/{slug}/"
-                score = calculate_case_risk_score(c)
-                
+      
                 # 🔥 CLDocument 기반 Complaint 정보 덮어쓰기
                 complaint_doc_no = c.complaint_doc_no
                 complaint_link = c.complaint_link
                 extracted_causes = c.extracted_causes
-                extracted_ai_snippet = c.extracted_ai_snippet                
-
+                extracted_ai_snippet = c.extracted_ai_snippet   
+                
+                score_source_text = f"{extracted_ai_snippet} {extracted_causes}".lower()
+                
                 if c.docket_id in doc_map:
                     doc = doc_map[c.docket_id]
                     complaint_doc_no = doc.doc_number or doc.doc_type
@@ -212,6 +213,15 @@ def render_markdown(
                     extracted_causes = doc.extracted_causes or extracted_causes
                     extracted_ai_snippet = doc.extracted_ai_snippet or extracted_ai_snippet
 
+                    # 🔥 위험도 재계산: CLDocument 기준
+                    score_source_text = f"{extracted_ai_snippet} {extracted_causes}".lower()
+
+                # 🔥 NEW: 텍스트 기반 직접 점수 계산 (CLDocument 우선 반영)
+                temp_case = c
+                temp_case.extracted_ai_snippet = extracted_ai_snippet
+                temp_case.extracted_causes = extracted_causes
+                score = calculate_case_risk_score(temp_case)
+             
                 if c.court_short_name and c.court_api_url:
                     court_display = _mdlink(c.court_short_name, c.court_api_url)
                 else:
