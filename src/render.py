@@ -252,7 +252,7 @@ def render_markdown(
                     f"{_esc(c.judge)} | "
                     f"{court_display} | "
                     f"{_esc(complaint_doc_no)} | "
-                    f"{_mdlink('Document(PDF)', complaint_link) if complaint_link else ''} | "
+                    f"{_mdlink('📄', complaint_link) if complaint_link else ''} | "
                     f"{_esc(c.recent_updates)} |"
                 )
 
@@ -288,7 +288,7 @@ def render_markdown(
             link = d.document_url or d.pdf_url
             lines.append(
                 f"| {_esc(d.date_filed)} | {_esc(d.case_name)} | "
-                f"{_esc(d.doc_type)} | {_mdlink('Document(PDF)', link)} |"
+                f"{_esc(d.doc_type)} | {_mdlink('📄', link)} |"
             )
         lines.append("</details>\n")
 
