@@ -246,7 +246,13 @@ def search_recent_documents(query: str, days: int = 3, max_results: int = 20) ->
         # r = recap documents (문서)
         # ca = cases (사건)
         # 사건 기반으로 검색해야 docket_id 확보 가능
-        params={"q": query, "type": "ca", "page_size": max_results},
+        params={
+           "q": query,
+           "type": "ca",
+           "page_size": max_results,
+           # 🔥 FIX: semantic search 강제 비활성화
+           "semantic": "false",
+        },        
     )
     if not data:
         print("[DEBUG] search_recent_documents: no data returned")        
