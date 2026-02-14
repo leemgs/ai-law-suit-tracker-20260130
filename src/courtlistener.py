@@ -548,6 +548,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
     complaint_doc = None
 
     for d in recap_docs:
+        print(f"[DEBUG] checking RECAP doc: {d.get('description')}")        
         desc = _safe_str(d.get("description")).lower()
         if any(k in desc for k in COMPLAINT_KEYWORDS):
             complaint_doc = d
@@ -555,25 +556,46 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
 
     # 2️⃣ RECAP 문서가 있으면 사용
     if complaint_doc:
+        print("[DEBUG] RECAP complaint document found")
+
         complaint_doc_no = _safe_str(complaint_doc.get("document_number")) or "1"
-        complaint_link = _abs_url(complaint_doc.get("filepath_local") or "")
+        print(f"[DEBUG] RECAP complaint_link={complaint_link}")        
+        complaint_link = _abs_url(
+            complaint_doc.get("filepath_local")
+            or complaint_doc.get("absolute_url")
+            or ""
+        )
+
         complaint_type = _detect_complaint_type(_safe_str(complaint_doc.get("description")))
 
     # 3️⃣ 없으면 HTML fallback
     if not complaint_link:
+        print("[DEBUG] RECAP complaint not found → HTML fallback attempt")
+        
         html_pdf_url = _extract_first_pdf_from_docket_html(docket_id)
         if html_pdf_url:
+            print(f"[DEBUG] HTML fallback PDF found: {html_pdf_url}")            
             complaint_link = html_pdf_url
             complaint_doc_no = "1"
-            complaint_type = "Original"
+            complaint_type = "Complaint (HTML Fallback)"
+        else:
+            print("[DEBUG] HTML fallback failed — no PDF found")
 
     # 4️⃣ PDF 텍스트 분석
     if complaint_link:
+        print(f"[DEBUG] Extracting PDF text from: {complaint_link}")        
         snippet = extract_pdf_text(complaint_link, max_chars=4000)
+        print(f"[DEBUG] PDF snippet length={len(snippet) if snippet else 0}")        
         if snippet:
             extracted_ai_snippet = extract_ai_training_snippet(snippet) or ""
             causes_list = detect_causes(snippet)
+            print(f"[DEBUG] extracted_ai_snippet length={len(extracted_ai_snippet)}")
+            print(f"[DEBUG] detected causes={causes_list}")            
             extracted_causes = ", ".join(causes_list) if causes_list else "미확인"
+        else:
+            print("[DEBUG] WARNING: PDF text extraction returned empty snippet")
+    else:
+        print("[DEBUG] No complaint_link available — skipping PDF extraction")
 
     return CLCaseSummary(
         docket_id=docket_id,
