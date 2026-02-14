@@ -141,6 +141,7 @@ def render_markdown(
     if cl_cases:
         print(f"[DEBUG] '최근 소송 Top 3 (업데이트 기준)' is printed.")        
         lines.append("## 🧠 최근 소송 Top 3 (업데이트 기준)\n")
+        lines.append("```")        
         top_cases = sorted(
             cl_cases,
             key=lambda x: x.date_filed,
@@ -148,8 +149,11 @@ def render_markdown(
         )[:3]
 
         for idx, c in enumerate(top_cases, start=1):
-            lines.append(f"{idx}. **{_esc(c.case_name)}**")
-            lines.append(f"   - {_short(c.extracted_ai_snippet, 120)}\n")
+            lines.append(f"({idx}) {_esc(c.case_name)}")
+            lines.append(f"   - {_short(c.extracted_ai_snippet, 120)}")
+            lines.append("")
+
+        lines.append("```")
 
     # 뉴스 테이블
     if lawsuits:
