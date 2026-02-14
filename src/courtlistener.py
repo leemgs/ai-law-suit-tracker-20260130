@@ -145,11 +145,8 @@ def _get(url: str, params: Optional[dict] = None) -> Optional[dict]:
         print(f"[DEBUG] GET {url}")
         print(f"[DEBUG] PARAMS length={len(str(params)) if params else 0}")
 
-        # 🔥 긴 search query는 POST로 처리 (URL 길이 제한 방지)
-        if url.endswith("/search/") and params:
-            r = requests.post(url, json=params, headers=_headers(), timeout=30)
-        else:
-            r = requests.get(url, params=params, headers=_headers(), timeout=30)
+        # 🔥 FIX: CourtListener search는 반드시 GET 사용
+        r = requests.get(url, params=params, headers=_headers(), timeout=30)
 
         if r.status_code in (401, 403):
             print(f"[DEBUG] AUTH ERROR {r.status_code} for {url}")           
@@ -247,11 +244,10 @@ def search_recent_documents(query: str, days: int = 3, max_results: int = 20) ->
         # ca = cases (사건)
         # 사건 기반으로 검색해야 docket_id 확보 가능
         params={
-           "q": query,
-           "type": "ca",
-           "page_size": max_results,
-           # 🔥 FIX: semantic search 강제 비활성화
-           "semantic": "false",
+            "q": query,
+            "type": "r",                 # 🔥 문서 기반 검색으로 복귀
+            "page_size": max_results,
+            "semantic": "true",          # 🔥 semantic=true 필수
         },        
     )
     if not data:
