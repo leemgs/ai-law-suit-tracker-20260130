@@ -222,7 +222,7 @@ def render_markdown(
                     f"{_esc(c.judge)} | "
                     f"{court_display} | "
                     f"{_esc(complaint_doc_no)} | "
-                    f"{_mdlink('PDF', complaint_link) if complaint_link else ''} | "
+                    f"{_mdlink('Document(PDF)', complaint_link) if complaint_link else ''} | "
                     f"{_esc(c.recent_updates)} |"
                 )
 
@@ -241,16 +241,18 @@ def render_markdown(
 
     # RECAP 법원 문서 (.pdf format)
     if cl_docs:
-        lines.append("## 📄 RECAP: 문서 기반 (Complaint/Petition 우선)")
-        lines.append("| 제출일 | 케이스 | 문서유형 | 문서 |")
+        lines.append("<details>")        
+        lines.append("<summary><strong><span style=\"font-size:2.5em; font-weight:bold;\">📄 RECAP: 법원 문서 기반 (Complaint/Petition 우선)</span></strong></summary>\n")
+        lines.append("| 제출일 | 케이스 | 문서유형 | 법원 문서 |")
         lines.append(_md_sep(4))
         for d in cl_docs:
             link = d.document_url or d.pdf_url
             lines.append(
                 f"| {_esc(d.date_filed)} | {_esc(d.case_name)} | "
-                f"{_esc(d.doc_type)} | {_mdlink('Document', link)} |"
+                f"{_esc(d.doc_type)} | {_mdlink('Document(PDF)', link)} |"
             )
-
+        lines.append("</details>\n")
+        
     # 기사 주소
     if lawsuits:
         lines.append("<details>")
@@ -270,9 +272,9 @@ def render_markdown(
     lines.append("")
     
     lines.append("### 📊 등급 기준")
-    lines.append("- 00~039 🟢 : 간접 연관")
-    lines.append("- 40~059 🟡 : 학습 쟁점 존재")
-    lines.append("- 60~079 ⚠️ : 모델 학습 직접 언급")
+    lines.append("-  0~ 39 🟢 : 간접 연관")
+    lines.append("- 40~ 59 🟡 : 학습 쟁점 존재")
+    lines.append("- 60~ 79 ⚠️ : 모델 학습 직접 언급")
     lines.append("- 80~100 🔥 : 무단 수집 + 학습 + 상업적 사용 고위험")
     lines.append("")
 
