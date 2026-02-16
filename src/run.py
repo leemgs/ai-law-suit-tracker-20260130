@@ -94,7 +94,13 @@ def main() -> None:
     )
 
     # 3) 렌더링
-    md = render_markdown(lawsuits, cl_docs, cl_cases, lookback_days=lookback_days)
+    md = render_markdown(
+        lawsuits,
+        cl_docs,
+        cl_cases,
+        recap_doc_count,
+        lookback_days=lookback_days,
+    )    
     md = f"### 실행 시각(KST): {run_ts_kst}\n\n" + md
     
     print("===== REPORT BEGIN =====")
