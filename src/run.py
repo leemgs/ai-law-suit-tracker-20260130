@@ -271,8 +271,33 @@ def main() -> None:
     print(f"Issue #{issue_no} 댓글 업로드 완료")
 
     # 5) Slack 요약 전송
+
+    # ============================================
+    # 🔥 Slack에 Base Snapshot 요약 추가
+    # ============================================
+
+    slack_dedup_summary = ""
+
+    if "### 자료 중복 제거 결과 요약:" in md:
+        import re
+
+        m = re.search(
+            r"### 자료 중복 제거 결과 요약:\n(.*?)\n\n",
+            md,
+            flags=re.S,
+        )
+
+        if m:
+            slack_dedup_summary = m.group(1).strip()
+ 
     summary_lines = [
         f"*AI 소송 모니터링 업데이트* ({timestamp})",
+    ]
+
+    # Slack 첫 줄에 중복 제거 요약 추가
+    if slack_dedup_summary:
+        summary_lines.append(slack_dedup_summary)
+    summary_lines += [
         f"- 언론보도 기반 수집 건수: {len(lawsuits)}건",
         f"- 법원 사건(RECAP 도켓) 확인 건수: {docket_case_count}건",
         f"- 법원 문서(RECAP Complaint 등) 확보 건수: {recap_doc_count}건",
