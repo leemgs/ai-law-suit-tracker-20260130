@@ -212,8 +212,22 @@ def main() -> None:
             for r in rows:
                 url = extract_article_url(r[idx])
                 if url in base_article_set:
-                    skip_row = ["skip"] * len(r)
-                    new_lines.append("| " + " | ".join(skip_row) + " |")
+                    # 🔥 개선: 핵심 식별 컬럼(No, 기사일자, 제목)은 유지
+                    try:
+                        no_idx = headers.index("No.")
+                        date_idx = headers.index("기사일자⬇️")
+                        title_idx = headers.index("제목")
+                    except ValueError:
+                        no_idx = date_idx = title_idx = None
+
+                    new_row = []
+                    for i, col in enumerate(r):
+                        if i in (no_idx, date_idx, title_idx):
+                            new_row.append(col)
+                        else:
+                            new_row.append("skip")
+
+                    new_lines.append("| " + " | ".join(new_row) + " |")
                 else:
                     new_lines.append("| " + " | ".join(r) + " |")
                     new_article_count += 1
@@ -236,8 +250,23 @@ def main() -> None:
             for r in rows:
                 docket = r[idx]
                 if docket in base_docket_set:
-                    skip_row = ["skip"] * len(r)
-                    new_lines.append("| " + " | ".join(skip_row) + " |")
+                    # 🔥 개선: 핵심 식별 컬럼(No, 상태, 케이스명, 도켓번호) 유지
+                    try:
+                        no_idx = headers.index("No.")
+                        status_idx = headers.index("상태")
+                        case_idx = headers.index("케이스명")
+                        docket_idx = headers.index("도켓번호")
+                    except ValueError:
+                        no_idx = status_idx = case_idx = docket_idx = None
+
+                    new_row = []
+                    for i, col in enumerate(r):
+                        if i in (no_idx, status_idx, case_idx, docket_idx):
+                            new_row.append(col)
+                        else:
+                            new_row.append("skip")
+
+                    new_lines.append("| " + " | ".join(new_row) + " |")
                 else:
                     new_lines.append("| " + " | ".join(r) + " |")
                     new_docket_count += 1
