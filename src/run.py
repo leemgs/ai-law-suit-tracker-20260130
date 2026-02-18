@@ -89,10 +89,7 @@ def main() -> None:
     #       CLDocument가 생성되지 않는 경우 KPI가 0으로 나옴
     # 해결: CLCaseSummary 기준으로 complaint_link 존재 여부 카운트
     # =====================================================
-    recap_doc_count = sum(
-        1 for c in cl_cases
-        if (getattr(c, "complaint_link", "") or "").strip()
-    )
+    recap_doc_count = len(cl_docs)
 
     # 3) 렌더링
     md = render_markdown(
