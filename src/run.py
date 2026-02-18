@@ -388,20 +388,10 @@ def main() -> None:
         for d in top:
             date = getattr(d, "date_filed", "N/A")
             name = getattr(d, "case_name", "Unknown Case")
-            docket_id_raw = getattr(d, "docket_id", None)
+            docket_id = getattr(d, "docket_id", None)
 
-            if docket_id_raw:
-                # FIX: docket_id에 slug가 붙어있는 경우 숫자만 추출
-                import re
-
-                m = re.match(r"(\d+)", str(docket_id_raw))
-                if m:
-                    docket_id = m.group(1)
-                else:
-                    docket_id = str(docket_id_raw)
-
+            if docket_id:
                 docket_url = f"https://www.courtlistener.com/docket/{docket_id}/"
-
                 slack_lines.append(
                     f"• {date} | <{docket_url}|{name}>"
                 )
