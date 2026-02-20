@@ -108,10 +108,13 @@ def main() -> None:
     )    
     md = f"### 실행 시각(KST): {run_ts_kst}\n\n" + md
     
-    print("===== REPORT BEGIN =====")
-    print(md[:1000]) # 로그 너무 길면 잘리므로 일부만 출력
+    print(f"📊 수집 및 분석 완료 (최근 {lookback_days}일)")
+    print(f"  ├ 📰 외부 소송 기사: {len(lawsuits)}건")
+    print(f"  └ ⚖ CourtListener(RECAP): {docket_case_count}건 (문서 {recap_doc_count}건)")
+
+    debug_log("===== REPORT PREVIEW (First 1000 chars) =====")
+    debug_log(md[:1000])
     debug_log(f"Report full length: {len(md)}")
-    print("===== REPORT END =====")
 
     # 4) GitHub Issue 작업
     issue_no = find_or_create_issue(owner, repo, gh_token, issue_title, issue_label)

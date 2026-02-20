@@ -4,6 +4,7 @@ from collections import Counter
 import re
 from .extract import Lawsuit
 from .courtlistener import CLDocument, CLCaseSummary
+from .utils import debug_log
 
 
 def _esc(s: str) -> str:
@@ -137,7 +138,7 @@ def render_markdown(
 
     # AI 소송 Top3 (업데이트 날짜 기준)
     if cl_cases:
-        print(f"[DEBUG] '최근 소송 Top 3 (업데이트 날짜 기준)' is printed.")        
+        debug_log("'최근 소송 Top 3 (업데이트 날짜 기준)' is printed.")        
         lines.append("## 🧠 최근 소송 Top 3 (업데이트 날짜 기준)\n")
         lines.append("```")        
         top_cases = sorted(
@@ -156,7 +157,7 @@ def render_markdown(
 
     # 뉴스 테이블
     if lawsuits:
-        print(f"[DEBUG] '외부 기사 기반 소송 정보' is printed.")            
+        debug_log("'외부 기사 기반 소송 정보' is printed.")            
         lines.append("## 📰 외부 기사 기반 소송 정보")
         lines.append("| No. | 기사일자⬇️ | 제목 | 소송번호 | 소송사유 | 위험도 예측 점수 |")
         lines.append(_md_sep(6))
@@ -249,15 +250,7 @@ def render_markdown(
                 # =====================================================
                 # NEW: RECAP 테이블 로그 출력
                 # =====================================================
-                print("[DEBUG] RECAP row added:")
-                print(f"        case={c.case_name}")
-                print(f"        docket={c.docket_number}")
-                print(f"        nature={c.nature_of_suit}")
-                print(f"        risk={score}")
-                print(f"        complaint_doc_no={complaint_doc_no}")
-                print(f"        complaint_link={complaint_link}")
-                print(f"        extracted_causes_len={len(c.extracted_causes or '')}")
-                print(f"        extracted_ai_len={len(c.extracted_ai_snippet or '')}")
+                debug_log(f"RECAP row added: case={c.case_name}, docket={c.docket_number}, risk={score}")
 
                 # =====================================================
                 # NEW: Nature 필드 강조 처리
