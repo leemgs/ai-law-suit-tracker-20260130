@@ -161,13 +161,19 @@ def main() -> None:
             separator = lines[1]
             rows = lines[2:]
 
-            header_cols = [c.strip() for c in header.split("|")[1:-1]]
+            def split_row(row_text: str):
+                # 정규식 (?<!\\)\| 를 사용하여 역슬래시로 이스케이프되지 않은 파이프만 분할
+                return [c.strip() for c in re.split(r'(?<!\\)\|', row_text.strip())[1:-1]]
+
+            header_cols = split_row(header)
 
             parsed_rows = []
             for row in rows:
-                cols = [c.strip() for c in row.split("|")[1:-1]]
+                cols = split_row(row)
                 if len(cols) == len(header_cols):
                     parsed_rows.append(cols)
+                else:
+                    debug_log(f"Table row column mismatch: expected {len(header_cols)}, got {len(cols)}. Row: {row[:100]}...")
 
             return header_cols, parsed_rows, (header, separator)
 
@@ -212,30 +218,31 @@ def main() -> None:
         total_article_count = len(rows)
 
         if headers and "제목" in headers:
-            idx = headers.index("제목")
+            title_idx = headers.index("제목")
+            no_idx = headers.index("No.") if "No." in headers else None
+            date_idx = headers.index("기사일자⬇️") if "기사일자⬇️" in headers else None
+
             header_line, separator_line = table_meta
             new_lines = [header_line, separator_line]
 
-            for r in rows:
-                url = extract_article_url(r[idx])
+            for row_idx, r in enumerate(rows, start=1):
+                url = extract_article_url(r[title_idx])
                 if url in base_article_set:
                     # 🔥 개선: 핵심 식별 컬럼(No, 기사일자, 제목)은 유지
-                    try:
-                        no_idx = headers.index("No.")
-                        date_idx = headers.index("기사일자⬇️")
-                        title_idx = headers.index("제목")
-                    except ValueError:
-                        no_idx = date_idx = title_idx = None
-
                     new_row = []
                     for i, col in enumerate(r):
-                        if i in (no_idx, date_idx, title_idx):
+                        if i == no_idx:
+                            new_row.append(str(row_idx))
+                        elif i in (date_idx, title_idx):
                             new_row.append(col)
                         else:
                             new_row.append("skip")
 
                     new_lines.append("| " + " | ".join(new_row) + " |")
                 else:
+                    # 신규 항목도 번호 재부여
+                    if no_idx is not None:
+                        r[no_idx] = str(row_idx)
                     new_lines.append("| " + " | ".join(r) + " |")
                     new_article_count += 1
 
@@ -250,31 +257,32 @@ def main() -> None:
         total_docket_count = len(rows)
 
         if headers and "도켓번호" in headers:
-            idx = headers.index("도켓번호")
+            docket_idx = headers.index("도켓번호")
+            no_idx = headers.index("No.") if "No." in headers else None
+            status_idx = headers.index("상태") if "상태" in headers else None
+            case_idx = headers.index("케이스명") if "케이스명" in headers else None
+
             header_line, separator_line = table_meta
             new_lines = [header_line, separator_line]
 
-            for r in rows:
-                docket = r[idx]
+            for row_idx, r in enumerate(rows, start=1):
+                docket = r[docket_idx]
                 if docket in base_docket_set:
                     # 🔥 개선: 핵심 식별 컬럼(No, 상태, 케이스명, 도켓번호) 유지
-                    try:
-                        no_idx = headers.index("No.")
-                        status_idx = headers.index("상태")
-                        case_idx = headers.index("케이스명")
-                        docket_idx = headers.index("도켓번호")
-                    except ValueError:
-                        no_idx = status_idx = case_idx = docket_idx = None
-
                     new_row = []
                     for i, col in enumerate(r):
-                        if i in (no_idx, status_idx, case_idx, docket_idx):
+                        if i == no_idx:
+                            new_row.append(str(row_idx))
+                        elif i in (status_idx, case_idx, docket_idx):
                             new_row.append(col)
                         else:
                             new_row.append("skip")
 
                     new_lines.append("| " + " | ".join(new_row) + " |")
                 else:
+                    # 신규 항목도 번호 재부여
+                    if no_idx is not None:
+                        r[no_idx] = str(row_idx)
                     new_lines.append("| " + " | ".join(r) + " |")
                     new_docket_count += 1
 
