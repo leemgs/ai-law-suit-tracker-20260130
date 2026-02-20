@@ -50,7 +50,7 @@ Repository → Settings → Secrets and variables → Actions → Variables 탭
 
 ### GitHub Actions
 - **매 시간 정각(UTC)** 자동 실행됩니다.
-- `Actions` -> `hourly-monitor` -> `Run workflow`를 통해 수동 실행도 가능합니다.
+- `Actions` -> `lawsuit-monitor` -> `Run workflow`를 통해 수동 실행도 가능합니다.
 
 ### 로컬 실행
 1. 저장소 클론 및 패키지 설치: `pip install -r requirements.txt`
