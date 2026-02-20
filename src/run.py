@@ -223,28 +223,33 @@ def main() -> None:
             date_idx = headers.index("기사일자⬇️") if "기사일자⬇️" in headers else None
 
             header_line, separator_line = table_meta
-            new_lines = [header_line, separator_line]
+            
+            non_skip_rows = []
+            skip_rows = []
 
-            for row_idx, r in enumerate(rows, start=1):
+            for r in rows:
                 url = extract_article_url(r[title_idx])
                 if url in base_article_set:
                     # 🔥 개선: 핵심 식별 컬럼(No, 기사일자, 제목)은 유지
                     new_row = []
                     for i, col in enumerate(r):
-                        if i == no_idx:
-                            new_row.append(str(row_idx))
-                        elif i in (date_idx, title_idx):
+                        if i in (no_idx, date_idx, title_idx):
                             new_row.append(col)
                         else:
                             new_row.append("skip")
-
-                    new_lines.append("| " + " | ".join(new_row) + " |")
+                    skip_rows.append(new_row)
                 else:
-                    # 신규 항목도 번호 재부여
-                    if no_idx is not None:
-                        r[no_idx] = str(row_idx)
-                    new_lines.append("| " + " | ".join(r) + " |")
+                    non_skip_rows.append(r)
                     new_article_count += 1
+            
+            # 합치기: 신규 먼저, 기존(skip) 나중
+            final_rows = non_skip_rows + skip_rows
+            new_lines = [header_line, separator_line]
+            
+            for row_idx, r in enumerate(final_rows, start=1):
+                if no_idx is not None:
+                    r[no_idx] = str(row_idx)
+                new_lines.append("| " + " | ".join(r) + " |")
 
             new_news_section = "\n".join(new_lines)
             current_md = current_md.replace(news_section, new_news_section)
@@ -263,28 +268,33 @@ def main() -> None:
             case_idx = headers.index("케이스명") if "케이스명" in headers else None
 
             header_line, separator_line = table_meta
-            new_lines = [header_line, separator_line]
+            
+            non_skip_rows = []
+            skip_rows = []
 
-            for row_idx, r in enumerate(rows, start=1):
+            for r in rows:
                 docket = r[docket_idx]
                 if docket in base_docket_set:
                     # 🔥 개선: 핵심 식별 컬럼(No, 상태, 케이스명, 도켓번호) 유지
                     new_row = []
                     for i, col in enumerate(r):
-                        if i == no_idx:
-                            new_row.append(str(row_idx))
-                        elif i in (status_idx, case_idx, docket_idx):
+                        if i in (no_idx, status_idx, case_idx, docket_idx):
                             new_row.append(col)
                         else:
                             new_row.append("skip")
-
-                    new_lines.append("| " + " | ".join(new_row) + " |")
+                    skip_rows.append(new_row)
                 else:
-                    # 신규 항목도 번호 재부여
-                    if no_idx is not None:
-                        r[no_idx] = str(row_idx)
-                    new_lines.append("| " + " | ".join(r) + " |")
+                    non_skip_rows.append(r)
                     new_docket_count += 1
+
+            # 합치기: 신규 먼저, 기존(skip) 나중
+            final_rows = non_skip_rows + skip_rows
+            new_lines = [header_line, separator_line]
+            
+            for row_idx, r in enumerate(final_rows, start=1):
+                if no_idx is not None:
+                    r[no_idx] = str(row_idx)
+                new_lines.append("| " + " | ".join(r) + " |")
 
             new_recap_section = "\n".join(new_lines)
             current_md = current_md.replace(recap_section, new_recap_section)
