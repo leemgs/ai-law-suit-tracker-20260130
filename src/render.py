@@ -60,15 +60,24 @@ def calculate_news_risk_score(title: str, reason: str) -> int:
     score = 0
     text = f"{title or ''} {reason or ''}".lower()
 
-    if any(k in text for k in ["scrape", "crawl", "unauthorised", "unauthorized"]):
+    # 1. 무단 데이터 수집 명시 (+30)
+    if any(k in text for k in ["scrape", "crawl", "ingest"]):
         score += 30
-    if any(k in text for k in ["train", "training", "model", "llm"]):
+    
+    # 2. 모델 학습 직접 언급 (+30)
+    if any(k in text for k in ["train", "training", "model"]):
         score += 30
-    if any(k in text for k in ["copyright", "dmca", "infringement"]):
-        score += 20
+    
+    # 3. 상업적 사용 (+15)
+    if any(k in text for k in ["commercial", "profit"]):
+        score += 15
+    
+    # 4. 저작권 관련 (뉴스에서는 Nature of Suit 820 대용으로 키워드 체크) (+15)
+    if any(k in text for k in ["copyright", "820"]):
+        score += 15
+        
+    # 5. 집단소송 (+10)
     if "class action" in text:
-        score += 10
-    if any(k in text for k in ["billion", "$"]):
         score += 10
 
     return min(score, 100)
@@ -91,14 +100,23 @@ def calculate_case_risk_score(case: CLCaseSummary) -> int:
     score = 0
     text = f"{case.extracted_ai_snippet or ''} {case.extracted_causes or ''}".lower()
 
-    if any(k in text for k in ["scrape", "crawl", "ingest", "harvest"]):
+    # 1. 무단 데이터 수집 명시 (+30)
+    if any(k in text for k in ["scrape", "crawl", "ingest"]):
         score += 30
-    if any(k in text for k in ["train", "training", "model", "llm", "neural"]):
+    
+    # 2. 모델 학습 직접 언급 (+30)
+    if any(k in text for k in ["train", "training", "model"]):
         score += 30
+    
+    # 3. 상업적 사용 (+15)
     if any(k in text for k in ["commercial", "profit"]):
         score += 15
+    
+    # 4. 저작권 소송 (Nature = 820) (+15)
     if case.nature_of_suit and "820" in case.nature_of_suit:
         score += 15
+        
+    # 5. 집단소송 (+10)
     if "class action" in text:
         score += 10
 
