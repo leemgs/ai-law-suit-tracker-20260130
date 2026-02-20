@@ -189,7 +189,7 @@ def main() -> None:
         base_article_set = set()
         base_docket_set = set()
 
-        news_section_base = extract_section(base_body, "## 📰 외부 기사 기반 소송 정보")
+        news_section_base = extract_section(base_body, "## 📰 News")
         headers, rows, _ = parse_table(news_section_base)
         if "제목" in headers:
             idx = headers.index("제목")
@@ -198,7 +198,7 @@ def main() -> None:
                 if url:
                     base_article_set.add(url)
 
-        recap_section_base = extract_section(base_body, "## ⚖️ RECAP")
+        recap_section_base = extract_section(base_body, "## ⚖️ Cases")
         headers, rows, _ = parse_table(recap_section_base)
         if "도켓번호" in headers:
             idx = headers.index("도켓번호")
