@@ -182,13 +182,13 @@ def render_markdown(
         lines.append("| No. | 기사일자⬇️ | 제목 | 소송번호 | 소송사유 | 위험도 예측 점수 |")
         lines.append(_md_sep(6))
 
-        # 위험도 점수 기준으로 정렬 (위험도 내림차순, 동일 점수 시 날짜 내림차순)
+        # 기사일자 기준으로 정렬 (날짜 내림차순, 동일 날짜 시 위험도 내림차순)
         scored_lawsuits = []
         for s in lawsuits:
             risk_score = calculate_news_risk_score(s.article_title or s.case_title, s.reason)
             scored_lawsuits.append((risk_score, s))
         
-        scored_lawsuits.sort(key=lambda x: (x[0], x[1].update_or_filed_date or ""), reverse=True)
+        scored_lawsuits.sort(key=lambda x: (x[1].update_or_filed_date or "", x[0]), reverse=True)
 
         for idx, (risk_score, s) in enumerate(scored_lawsuits, start=1):
             article_url = s.article_urls[0] if getattr(s, "article_urls", None) else ""
