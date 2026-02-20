@@ -22,11 +22,6 @@ class Lawsuit:
     article_title: str
     case_number: str
     reason: str
-    plaintiff: str
-    defendant: str
-    country: str
-    court: str
-    history: str
     article_urls: List[str]
 
 
@@ -72,13 +67,6 @@ def extract_case_number(text: str) -> str:
         if m:
             return m.group(0)
     return "미확인"
-
-def extract_parties_simple(text: str) -> tuple[str, str]:
-    m = re.search(r"([A-Z][A-Za-z0-9 ,.&'\-]{2,})\s+v\.?\s+([A-Z][A-Za-z0-9 ,.&'\-]{2,})", text)
-    if m:
-        return m.group(1).strip(), m.group(2).strip()
-    return "미확인", "미확인"
-
 
 def extract_case_title_from_text(text: str) -> str:
     """본문 텍스트에서 'A v. B' 형태의 사건명을 최대한 추출한다.
@@ -182,14 +170,6 @@ def build_lawsuits_from_news(news_items, known_cases, lookback_days: int = 3) ->
         if case_title == "미확인":
             case_title = guess_case_title_from_article_title(article_title)
 
-        # 사건명이 없어도 본문에서 당사자 캡션이 나오는 경우가 많아 보조 추출
-        pl, df = extract_parties_simple(case_title if case_title != "미확인" else text)
-        plaintiff = enrich.get("plaintiff", pl)
-        defendant = enrich.get("defendant", df)
-
-        country = enrich.get("country", "미확인")
-        court = enrich.get("court", "미확인")
-
         published = item.published_at or datetime.now(timezone.utc)
         update_date = published.date().isoformat()
 
@@ -200,17 +180,12 @@ def build_lawsuits_from_news(news_items, known_cases, lookback_days: int = 3) ->
                 article_title=article_title,
                 case_number=case_number,
                 reason=enrich.get("reason", reason_heuristic(hay)),
-                plaintiff=plaintiff,
-                defendant=defendant,
-                country=country,
-                court=court,
-                history=f"최근 {lookback_days}일 이내 기사/RSS 기반 자동 수집(소장/도켓 확인 전 일부 항목은 미확인 가능).",
                 article_urls=sorted(list({final_url, item.url})),
             )
         )
 
     # 병합
-    merged: Dict[str, Lawsuit] = {}
+    merged: Dict[tuple[str, str, str], Lawsuit] = {}
     for r in results:
         # 사건번호가 없는 경우도 있어 (case_number, case_title, article_title)로 최대한 보존
         key = (r.case_number, r.case_title, r.article_title)

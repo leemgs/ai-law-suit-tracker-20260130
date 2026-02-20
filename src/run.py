@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -21,10 +22,14 @@ from .queries import COURTLISTENER_QUERIES
 
 def main() -> None:
     # 0) 환경 변수 로드
-    owner = os.environ["GITHUB_OWNER"]
-    repo = os.environ["GITHUB_REPO"]
-    gh_token = os.environ["GITHUB_TOKEN"]
-    slack_webhook = os.environ["SLACK_WEBHOOK_URL"]
+    owner = os.environ.get("GITHUB_OWNER")
+    repo = os.environ.get("GITHUB_REPO")
+    gh_token = os.environ.get("GITHUB_TOKEN")
+    slack_webhook = os.environ.get("SLACK_WEBHOOK_URL")
+
+    if not all([owner, repo, gh_token, slack_webhook]):
+        missing = [k for k, v in {"GITHUB_OWNER": owner, "GITHUB_REPO": repo, "GITHUB_TOKEN": gh_token, "SLACK_WEBHOOK_URL": slack_webhook}.items() if not v]
+        raise ValueError(f"필수 환경 변수가 누락되었습니다: {', '.join(missing)}")
 
     base_title = os.environ.get("ISSUE_TITLE_BASE", "AI 불법/무단 학습데이터 소송 모니터링")
     lookback_days = int(os.environ.get("LOOKBACK_DAYS", "3"))
@@ -119,7 +124,6 @@ def main() -> None:
     if not first_run_today:
         base_body = get_first_comment_body(owner, repo, gh_token, issue_no) or ""
 
-        import re
 
         # =====================================================
         # 🔒 안정형 테이블 기반 비교 로직
@@ -310,8 +314,6 @@ def main() -> None:
     # 🔥 Slack 출력 개선 (최종 포맷)
     # ============================================
 
-    import re
-
     slack_dedup_news = None
     slack_dedup_cases = None
 
@@ -386,8 +388,6 @@ def main() -> None:
                 )
             elif docket_id:
                 # 🔥 slug 생성 (GitHub 이슈와 동일 구조 맞추기)
-                import re
-
                 # case_name → slug 변환
                 slug = re.sub(r"[^a-zA-Z0-9]+", "-", name).strip("-").lower()
 

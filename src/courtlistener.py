@@ -21,8 +21,6 @@ SEARCH_URL = BASE + "/api/rest/v4/search/"
 DOCKET_URL = BASE + "/api/rest/v4/dockets/{id}/"
 DOCKETS_LIST_URL = BASE + "/api/rest/v4/dockets/"
 RECAP_DOCS_URL = BASE + "/api/rest/v4/recap-documents/"
-PARTIES_URL = BASE + "/api/rest/v4/parties/"
-DOCKET_ENTRIES_URL = BASE + "/api/rest/v4/docket-entries/"
 
 COMPLAINT_KEYWORDS = [
     "complaint",
@@ -62,20 +60,16 @@ class CLCaseSummary:
     court: str
     court_short_name: str
     court_api_url: str
-    date_filed: str
     status: str
     judge: str
-    magistrate: str
     nature_of_suit: str
     cause: str
-    parties: str
     complaint_doc_no: str
     complaint_link: str
     complaint_type: str
     recent_updates: str
     extracted_causes: str
     extracted_ai_snippet: str
-    docket_candidates: str = ""
 
 
 # =====================================================
@@ -339,8 +333,8 @@ def search_recent_documents(query: str, days: int = 3, max_results: int = 50) ->
                 if dt < cutoff:
                     print(f"[DEBUG] filtered by date: {dt} < {cutoff}")                    
                     continue
-            except Exception:
-                print(f"[DEBUG] date parse error: {e}")                
+            except Exception as e:
+                print(f"[DEBUG] date parse error: {e}")
                 pass
         out.append(r)
 
@@ -527,8 +521,8 @@ def build_complaint_documents_from_hits(
                     if dt < cutoff:
                         print(f"[DEBUG] complaint filtered by date {dt} < {cutoff}")                        
                         continue
-                except Exception:
-                    print(f"[DEBUG] complaint date parse error: {e}")                    
+                except Exception as e:
+                    print(f"[DEBUG] complaint date parse error: {e}")
                     pass
             print(f"[DEBUG] complaint accepted docket={did} date={date_filed}")
             print(f"[DEBUG] description={d.get('description')}")
@@ -603,12 +597,6 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
         or "미확인"
     )
 
-    magistrate = (
-        _safe_str(docket.get("referred_to_str"))
-        or _safe_str(docket.get("referred_to"))
-        or "미확인"
-    )
-
     nature_of_suit = (
         _safe_str(docket.get("nature_of_suit"))
         or _safe_str(docket.get("nature_of_suit_display"))
@@ -621,8 +609,6 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
         or _safe_str(docket.get("cause_of_action"))
         or "미확인"
     )
-
-    parties = _safe_str(docket.get("party_summary")) or "미확인"
 
     recent_updates = (
         _safe_str(docket.get("date_modified"))[:10]
@@ -743,13 +729,10 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
         court=court,
         court_short_name=court_short_name,
         court_api_url=court_api_url,
-        date_filed=date_filed or "미확인",
         status=status,
         judge=judge,
-        magistrate=magistrate,
         nature_of_suit=nature_of_suit,
         cause=cause,
-        parties=parties,
         complaint_doc_no=complaint_doc_no,
         complaint_link=complaint_link,
         complaint_type=complaint_type,
