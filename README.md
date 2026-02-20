@@ -44,6 +44,7 @@ Repository → Settings → Secrets and variables → Actions → Variables 탭
 | `SHOW_DOCKET_CANDIDATES`| `0` | 1 설정 시 매칭이 불확실한 도켓 후보군 표시 |
 | `COLLAPSE_LONG_CELLS` | `0` | 1 설정 시 도켓 업데이트 등 긴 셀을 접음 |
 | `COLLAPSE_ARTICLE_URLS` | `0` | 1 설정 시 기사 URL 목록을 섹션으로 접음 |
+| `DEBUG` | `0` | 1 설정 시 상세 실행 로그(디버그 메세지) 출력 |
 
 ## 🚀 실행 및 로컬 환경
 
@@ -60,6 +61,7 @@ Repository → Settings → Secrets and variables → Actions → Variables 탭
    GITHUB_TOKEN=your_pat
    SLACK_WEBHOOK_URL=your_url
    COURTLISTENER_TOKEN=your_cl_token
+   DEBUG=1
    ```
 3. 실행: `python -m src.run`
 

@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from dataclasses import dataclass
 from typing import List, Dict, Any
 from datetime import datetime, timezone, timedelta
+from .utils import debug_log
 
 CASE_NO_PATTERNS = [
     re.compile(r"\b\d:\d{2}-cv-\d{5}\b", re.IGNORECASE),
@@ -43,7 +44,8 @@ def fetch_page_text(url: str, timeout: int = 15) -> tuple[str, str]:
         text = re.sub(r"[ \t]+", " ", text)
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text[:20000], final_url
-    except Exception:
+    except Exception as e:
+        debug_log(f"fetch_page_text failed: {url}, error: {e}")
         return "", url
 
 def load_known_cases(path: str = "data/known_cases.yml") -> List[Dict[str, Any]]:
@@ -148,6 +150,7 @@ def reason_heuristic(hay: str) -> str:
 
 def build_lawsuits_from_news(news_items, known_cases, lookback_days: int = 3) -> List[Lawsuit]:
     results: List[Lawsuit] = []
+    debug_log(f"build_lawsuits_from_news items={len(news_items)} lookback={lookback_days}")
     cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
     for item in news_items:
         if item.published_at and item.published_at < cutoff:
@@ -159,6 +162,7 @@ def build_lawsuits_from_news(news_items, known_cases, lookback_days: int = 3) ->
         hay = (item.title + " " + text)
         lower = hay.lower()
         if not any(k in lower for k in ["lawsuit", "sued", "litigation", "copyright", "dmca", "pirat", "unauthoriz", "training data", "dataset"]):
+            debug_log(f"Skipped non-relevant news: {item.title[:60]}...")
             continue
 
         enrich = enrich_from_known(text, item.title, known_cases)

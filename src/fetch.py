@@ -5,6 +5,7 @@ from typing import List
 from datetime import datetime, timezone
 from dateutil import parser as dtparser
 from .queries import NEWS_QUERIES
+from .utils import debug_log
 
 GOOGLE_NEWS_RSS = "https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en"
 
@@ -31,8 +32,10 @@ def fetch_news() -> List[NewsItem]:
     seen: set[str] = set()
 
     for q in NEWS_QUERIES:
+        debug_log(f"Fetching news for query: {q}")
         feed_url = GOOGLE_NEWS_RSS.format(q=q.replace(" ", "%20"))
         feed = feedparser.parse(feed_url)
+        debug_log(f"Found {len(feed.entries)} entries for query: {q}")
 
         for e in feed.entries:
             title = getattr(e, "title", "").strip()

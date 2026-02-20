@@ -10,6 +10,7 @@ from .render import render_markdown
 from .github_issue import find_or_create_issue, create_comment, close_other_daily_issues
 from .github_issue import list_comments, get_first_comment_body
 from .slack import post_to_slack
+from .utils import debug_log
 from .courtlistener import (
     search_recent_documents,
     build_complaint_documents_from_hits,
@@ -47,6 +48,7 @@ def main() -> None:
     # 1) CourtListener 검색
     hits = []
     for q in COURTLISTENER_QUERIES:
+        debug_log(f"Running CourtListener query: {q}")
         hits.extend(search_recent_documents(q, days=lookback_days, max_results=20))
     
     # 중복 제거
@@ -108,6 +110,7 @@ def main() -> None:
     
     print("===== REPORT BEGIN =====")
     print(md[:1000]) # 로그 너무 길면 잘리므로 일부만 출력
+    debug_log(f"Report full length: {len(md)}")
     print("===== REPORT END =====")
 
     # 4) GitHub Issue 작업

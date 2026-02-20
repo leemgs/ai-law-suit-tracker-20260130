@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 from datetime import datetime, timezone, timedelta
 
+from .utils import debug_log
 from .pdf_text import extract_pdf_text
 from .complaint_parse import (
     detect_causes,
@@ -136,26 +137,26 @@ def _headers() -> Dict[str, str]:
 
 def _get(url: str, params: Optional[dict] = None) -> Optional[dict]:
     try:
-        print(f"[DEBUG] GET {url}")
-        print(f"[DEBUG] PARAMS length={len(str(params)) if params else 0}")
+        debug_log(f"GET {url}")
+        debug_log(f"PARAMS length={len(str(params)) if params else 0}")
 
         # 🔥 FIX: CourtListener search는 반드시 GET 사용
         r = requests.get(url, params=params, headers=_headers(), timeout=30)
 
         if r.status_code in (401, 403):
-            print(f"[DEBUG] AUTH ERROR {r.status_code} for {url}")           
+            debug_log(f"AUTH ERROR {r.status_code} for {url}")           
             return None
 
         if r.status_code >= 400:
-            print(f"[DEBUG] HTTP ERROR {r.status_code}")
-            print(f"[DEBUG] RESPONSE TEXT: {r.text[:500]}")
+            debug_log(f"HTTP ERROR {r.status_code}")
+            debug_log(f"RESPONSE TEXT: {r.text[:500]}")
             return None
 
         r.raise_for_status()
-        print(f"[DEBUG] SUCCESS {url} status={r.status_code}")
+        debug_log(f"SUCCESS {url} status={r.status_code}")
         return r.json()
     except Exception as e:
-        print(f"[DEBUG] EXCEPTION in _get function: {type(e).__name__}: {e}")    
+        debug_log(f"EXCEPTION in _get function: {type(e).__name__}: {e}")    
         return None
 
 
@@ -180,7 +181,7 @@ def _validate_pdf_url(pdf_url: str) -> bool:
         return False
 
     try:
-        print(f"[DEBUG] HEAD check: {pdf_url}")
+        debug_log(f"HEAD check: {pdf_url}")
 
         r = requests.head(
             pdf_url,
@@ -192,7 +193,7 @@ def _validate_pdf_url(pdf_url: str) -> bool:
             allow_redirects=True,
         )
 
-        print(f"[DEBUG] HEAD status={r.status_code}")
+        debug_log(f"HEAD status={r.status_code}")
 
         if r.status_code != 200:
             print(f"[ERROR] PDF HEAD failed status={r.status_code}")
@@ -201,8 +202,8 @@ def _validate_pdf_url(pdf_url: str) -> bool:
         content_type = r.headers.get("Content-Type", "")
         content_length = r.headers.get("Content-Length", "unknown")
 
-        print(f"[DEBUG] Content-Type={content_type}")
-        print(f"[DEBUG] Content-Length={content_length}")
+        debug_log(f"Content-Type={content_type}")
+        debug_log(f"Content-Length={content_length}")
 
         if "pdf" not in content_type.lower():
             print("[ERROR] HEAD response is not PDF")
@@ -251,7 +252,8 @@ def _extract_first_pdf_from_docket_html(docket_id: int) -> str:
             return ""
 
         html = r.text
-        print("[DEBUG] HTML length:", len(html))
+        debug_log(f"HTML fetch successful: {url}")
+        debug_log(f"HTML length: {len(html)}")
         
         # =====================================================
         # 🔥 FIX: 절대 URL + 상대 URL 모두 탐지
@@ -286,7 +288,8 @@ def _extract_first_pdf_from_docket_html(docket_id: int) -> str:
 # =====================================================
 
 def search_recent_documents(query: str, days: int = 3, max_results: int = 50) -> List[dict]:
-    print(f"[DEBUG] search_recent_documents query='{query}' days={days}")   
+    print(f"CourtListener 검색 중: '{query}'")
+    debug_log(f"search_recent_documents query='{query}' days={days}")   
 
 #                          문서단위 검색 vs. 사건단위 검색
 #                         ================================
@@ -314,15 +317,15 @@ def search_recent_documents(query: str, days: int = 3, max_results: int = 50) ->
         },        
     )
     if not data:
-        print("[DEBUG] search_recent_documents: no data returned")        
+        debug_log("search_recent_documents: no data returned")        
         return []
 
     results = data.get("results", [])
-    print(f"[DEBUG] search results raw count={len(results)}")    
+    debug_log(f"search results raw count={len(results)}")    
     # 🔥 FIX: 날짜 기준 비교 (시간 제거)
     today = datetime.now(timezone.utc).date()
     cutoff = today - timedelta(days=days)
-    print(f"[DEBUG] cutoff date={cutoff}")
+    debug_log(f"cutoff date={cutoff}")
 
     out = []
     for r in results:
@@ -353,19 +356,19 @@ def search_recent_documents(query: str, days: int = 3, max_results: int = 50) ->
 
 def _pick_docket_id(hit: dict) -> Optional[int]:
     for key in ["docket_id", "docketId", "docket"]:
-        v = hit.get(key)
-        if isinstance(v, int):
-            print(f"[DEBUG] docket_id found directly: {v}")            
-            return v
+            if hit.get("docket_id"):
+                debug_log(f"Extracted docket_id from hit: {hit['docket_id']}")
+                return hit["docket_id"]
+            
     # 🔥 NEW: handle string docket URL
     docket_field = hit.get("docket")
     if isinstance(docket_field, str):
         match = re.search(r"/dockets/(\d+)/", docket_field)
         if match:
             did = int(match.group(1))
-            print(f"[DEBUG] extracted docket_id from URL: {did}")
+            debug_log(f"extracted docket_id from URL: {did}")
             return did
-    print("[DEBUG] docket_id not found in hit")
+    debug_log("docket_id not found in hit")
     
     return None
 
@@ -399,11 +402,11 @@ def build_case_summaries_from_case_titles(case_titles: List[str]) -> List[CLCase
 
 def build_case_summaries_from_hits(hits: List[dict]) -> List[CLCaseSummary]:
     out = []
-    print(f"[DEBUG] build_case_summaries_from_hits input hits={len(hits)}")    
+    debug_log(f"build_case_summaries_from_hits input hits={len(hits)}")    
     for hit in hits:
         did = _pick_docket_id(hit)
         if did:
-            print(f"[DEBUG] found docket_id={did}")            
+            debug_log(f"found docket_id={did}")            
             s = build_case_summary_from_docket_id(did)
             if s:
                 out.append(s)
@@ -437,10 +440,10 @@ def build_complaint_documents_from_hits(
         docket_number = _safe_str(docket.get("docket_number")) or "미확인"
         court = _safe_str(docket.get("court")) or "미확인"
 
-        print(f"[DEBUG] --- Processing docket {did} ---")
-        print(f"[DEBUG] case_name={case_name}")
-        print(f"[DEBUG] docket_number={docket_number}")
-        print(f"[DEBUG] court={court}")     
+        debug_log(f"--- Processing docket {did} ---")
+        debug_log(f"case_name={case_name}")
+        debug_log(f"docket_number={docket_number}")
+        debug_log(f"court={court}")     
         
         # --------------------------------------------------
         # 안정화: docket 전체 기준 RECAP pagination 조회
@@ -448,18 +451,18 @@ def build_complaint_documents_from_hits(
         docs = []
         url = RECAP_DOCS_URL
         params = {"docket": did, "page_size": 100}
-        print(f"[DEBUG] fetching RECAP docs for docket={did}")        
+        debug_log(f"fetching RECAP docs for docket={did}")        
 
         while url:
             data = _get(url, params=params) if params else _get(url)
             params = None
             if not data:
-                print("[DEBUG] RECAP pagination returned no data")                
+                debug_log("RECAP pagination returned no data")                
                 break
             docs.extend(data.get("results", []))
             url = data.get("next")
     
-        print(f"[DEBUG] total RECAP docs fetched={len(docs)}")
+        debug_log(f"total RECAP docs fetched={len(docs)}")
         # 🔥 FIX: initialize fallback variables (avoid NameError / leakage)
         html_pdf_url = ""    
 
@@ -467,11 +470,11 @@ def build_complaint_documents_from_hits(
         # ✅ BEST PRACTICE: RECAP → HTML fallback
         # =====================================================
         if not docs:
-            print("[DEBUG] RECAP empty → HTML fallback activated")
+            debug_log("RECAP empty → HTML fallback activated")
             html_pdf_url = _extract_first_pdf_from_docket_html(did)
 
             if html_pdf_url:
-                print(f"[DEBUG] HTML fallback PDF URL: {html_pdf_url}")
+                debug_log(f"HTML fallback PDF URL: {html_pdf_url}")
                 # Complaint 구조는 보통 Caption (당사자), Jurisdiction, Background, Factual Allegations, Causes of Action 등으로 구성 되며, 
                 # AI 학습 관련 주장도 보통 초반 5페이지 이내에 등장합니다.
                 # 4500자 의미: 약 2~3페이지 분량 (약 700~900 단어), 'PDF 전체 대신 앞부분 4500자만 분석을하겠다.'는 최적화를 위한 제한 값입니다.
@@ -481,11 +484,11 @@ def build_complaint_documents_from_hits(
                     print("[ERROR] PDF parsing FAILED (HTML fallback)")
                     print(f"[ERROR] URL: {html_pdf_url}")
                 else:
-                    print(f"[DEBUG] PDF parsing SUCCESS length={len(snippet)}")
+                    debug_log(f"PDF parsing SUCCESS length={len(snippet)}")
 
 
                 p_ex, d_ex = extract_parties_from_caption(snippet) if snippet else ("미확인", "미확인")
-                print(f"[DEBUG] HTML fallback snippet length={len(snippet) if snippet else 0}")                
+                debug_log(f"HTML fallback snippet length={len(snippet) if snippet else 0}")                
                 causes = detect_causes(snippet) if snippet else []
                 ai_snip = extract_ai_training_snippet(snippet) if snippet else ""
 
@@ -511,7 +514,7 @@ def build_complaint_documents_from_hits(
         for d in docs:
             desc = _safe_str(d.get("description")).lower()
             if not any(k in desc for k in COMPLAINT_KEYWORDS):
-                print(f"[DEBUG] skipped non-complaint doc: {desc[:60]}")                
+                debug_log(f"skipped non-complaint doc: {desc[:60]}")                
                 continue
 
             date_filed = _safe_str(d.get("date_filed"))[:10]
@@ -519,16 +522,16 @@ def build_complaint_documents_from_hits(
                 try:
                     dt = datetime.fromisoformat(date_filed).date()
                     if dt < cutoff:
-                        print(f"[DEBUG] complaint filtered by date {dt} < {cutoff}")                        
+                        debug_log(f"complaint filtered by date {dt} < {cutoff}")                        
                         continue
                 except Exception as e:
-                    print(f"[DEBUG] complaint date parse error: {e}")
+                    debug_log(f"complaint date parse error: {e}")
                     pass
-            print(f"[DEBUG] complaint accepted docket={did} date={date_filed}")
-            print(f"[DEBUG] description={d.get('description')}")
-            print(f"[DEBUG] document_number={d.get('document_number')}")            
+            debug_log(f"complaint accepted docket={did} date={date_filed}")
+            debug_log(f"description={d.get('description')}")
+            debug_log(f"document_number={d.get('document_number')}")            
             pdf_url = _abs_url(d.get("filepath_local") or "")
-            print(f"[DEBUG] RECAP PDF URL: {pdf_url}")
+            debug_log(f"RECAP PDF URL: {pdf_url}")
             snippet = ""
 
             if pdf_url and _validate_pdf_url(pdf_url):
@@ -541,7 +544,7 @@ def build_complaint_documents_from_hits(
                 print("[ERROR] PDF parsing FAILED (RECAP)")
                 print(f"[ERROR] URL: {pdf_url}")
             elif snippet:
-                print(f"[DEBUG] PDF parsing SUCCESS length={len(snippet)}")
+                debug_log(f"PDF parsing SUCCESS length={len(snippet)}")
 
             p_ex, d_ex = extract_parties_from_caption(snippet) if snippet else ("미확인", "미확인")
             causes = detect_causes(snippet) if snippet else []
@@ -572,9 +575,9 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
     docket = _get(DOCKET_URL.format(id=docket_id))
     if not docket:
         return None
-    print(f"[DEBUG] === build_case_summary_from_docket_id {docket_id} ===")
-    print(f"[DEBUG] case_name={docket.get('case_name')}")
-    print(f"[DEBUG] docket_number={docket.get('docket_number')}")
+    debug_log(f"=== build_case_summary_from_docket_id {docket_id} ===")
+    debug_log(f"case_name={docket.get('case_name')}")
+    debug_log(f"docket_number={docket.get('docket_number')}")
 
     case_name = _safe_str(docket.get("case_name")) or "미확인"
     docket_number = _safe_str(docket.get("docket_number")) or "미확인"
@@ -648,7 +651,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
     complaint_doc = None
 
     for d in recap_docs:
-        print(f"[DEBUG] checking RECAP doc: {d.get('description')}")        
+        debug_log(f"checking RECAP doc: {d.get('description')}")        
         desc = _safe_str(d.get("description")).lower()
         if any(k in desc for k in COMPLAINT_KEYWORDS):
             complaint_doc = d
@@ -656,7 +659,7 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
 
     # 2️⃣ RECAP 문서가 있으면 사용
     if complaint_doc:
-        print("[DEBUG] RECAP complaint document found")
+        debug_log("RECAP complaint document found")
 
         complaint_doc_no = _safe_str(complaint_doc.get("document_number")) or "1"      
         complaint_link = _abs_url(
@@ -664,29 +667,29 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
             or complaint_doc.get("absolute_url")
             or ""
         )
-        print(f"[DEBUG] complaint_doc_no={complaint_doc_no}")
-        print(f"[DEBUG] complaint_link={complaint_link}")
+        debug_log(f"complaint_doc_no={complaint_doc_no}")
+        debug_log(f"complaint_link={complaint_link}")
         complaint_type = _detect_complaint_type(_safe_str(complaint_doc.get("description")))
 
     # 3️⃣ 없으면 HTML fallback
     if not complaint_link:
-        print("[DEBUG] RECAP complaint not found → HTML fallback attempt")
+        debug_log("RECAP complaint not found → HTML fallback attempt")
         
         html_pdf_url = _extract_first_pdf_from_docket_html(docket_id)
         if html_pdf_url:
-            print(f"[DEBUG] HTML fallback PDF found: {html_pdf_url}")            
+            debug_log(f"HTML fallback PDF found: {html_pdf_url}")            
             complaint_link = html_pdf_url
             complaint_doc_no = "1"
             complaint_type = "Complaint (HTML Fallback)"
         else:
-            print("[DEBUG] HTML fallback failed — no PDF found")
+            debug_log("HTML fallback failed — no PDF found")
 
-        print(f"[DEBUG] final complaint_link={complaint_link}")
+        debug_log(f"final complaint_link={complaint_link}")
     
     # 4️⃣ PDF 텍스트 분석
     if complaint_link:
-        print(f"[DEBUG] Extracting PDF text from: {complaint_link}")     
-        print(f"[DEBUG] Starting PDF extraction...")        
+        debug_log(f"Extracting PDF text from: {complaint_link}")     
+        debug_log("Starting PDF extraction...")        
         snippet = ""
 
         if _validate_pdf_url(complaint_link):
@@ -695,14 +698,14 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
             print("[ERROR] Complaint PDF validation failed")
             print(f"[ERROR] complaint_link={complaint_link}")
 
-        print(f"[DEBUG] PDF snippet length={len(snippet) if snippet else 0}")
+        debug_log(f"PDF snippet length={len(snippet) if snippet else 0}")
 
         if snippet:
-            print("[DEBUG] ===== PDF TEXT PREVIEW BEGIN =====")
-            print(snippet[:1000])
-            print("[DEBUG] ===== PDF TEXT PREVIEW END =====")
+            debug_log("===== PDF TEXT PREVIEW BEGIN =====")
+            debug_log(snippet[:1000])
+            debug_log("===== PDF TEXT PREVIEW END =====")
         else:
-            print("[DEBUG] PDF text extraction returned EMPTY STRING")
+            debug_log("PDF text extraction returned EMPTY STRING")
             print("[ERROR] PDF text extraction FAILED")
             print(f"[ERROR] complaint_link={complaint_link}")
             print("[ERROR] Possible causes:")
@@ -710,17 +713,17 @@ def build_case_summary_from_docket_id(docket_id: int) -> Optional[CLCaseSummary]
             print("  - Non-PDF response")
             print("  - Corrupted file")
 
-        print(f"[DEBUG] PDF snippet length={len(snippet) if snippet else 0}")        
+        debug_log(f"PDF snippet length={len(snippet) if snippet else 0}")        
         if snippet:
             extracted_ai_snippet = extract_ai_training_snippet(snippet) or ""
             causes_list = detect_causes(snippet)
-            print(f"[DEBUG] extracted_ai_snippet length={len(extracted_ai_snippet)}")
-            print(f"[DEBUG] detected causes={causes_list}")            
+            debug_log(f"extracted_ai_snippet length={len(extracted_ai_snippet)}")
+            debug_log(f"detected causes={causes_list}")            
             extracted_causes = ", ".join(causes_list) if causes_list else "미확인"
         else:
-            print("[DEBUG] WARNING: PDF text extraction returned empty snippet")
+            debug_log("WARNING: PDF text extraction returned empty snippet")
     else:
-        print("[DEBUG] No complaint_link available — skipping PDF extraction")
+        debug_log("No complaint_link available — skipping PDF extraction")
 
     return CLCaseSummary(
         docket_id=docket_id,
