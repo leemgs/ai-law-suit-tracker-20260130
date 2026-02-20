@@ -14,9 +14,10 @@ CAUSE_PATTERNS = [
 ]
 
 AI_DATA_PATTERNS = [
-    re.compile(r"train(?:ed|ing)?\s+(?:an\s+)?(?:ai|model|models|llm|large\s+language\s+model)", re.I),
-    re.compile(r"training\s+data|dataset|scrap(?:e|ing)|web\s+scrap", re.I),
-    re.compile(r"without\s+permission|unauthorized|without\s+license|pirat(?:ed|ing)|shadow\s+library", re.I),
+    re.compile(r"train(?:ing|ed)?\s+(?:an\s+)?(?:ai|model|models|llm|large\s+language\s+model|gpt|transformer|diffusion)", re.I),
+    re.compile(r"training\s+data|dataset|scrap(?:e|ing)|web\s+scrap|harvest(?:ing)?|mining|extraction|collection", re.I),
+    re.compile(r"without\s+permission|unauthorized|without\s+license|pirat(?:ed|ing)|shadow\s+library|bypass|robots\.txt", re.I),
+    re.compile(r"commercial|profit|monetiz(?:e|ation)|revenue|subscription|enterprise", re.I),
 ]
 
 def _sentences(text: str) -> List[str]:

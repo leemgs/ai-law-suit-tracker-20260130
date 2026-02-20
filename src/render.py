@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List
 from collections import Counter
 import re
+import copy
 from .extract import Lawsuit
 from .courtlistener import CLDocument, CLCaseSummary
 from .utils import debug_log
@@ -61,23 +62,23 @@ def calculate_news_risk_score(title: str, reason: str) -> int:
     text = f"{title or ''} {reason or ''}".lower()
 
     # 1. 무단 데이터 수집 명시 (+30)
-    if any(k in text for k in ["scrape", "crawl", "ingest"]):
+    if any(k in text for k in ["scrape", "crawl", "ingest", "harvest", "mining", "extraction", "bulk", "collection", "robots.txt", "common crawl", "laion", "the pile", "bookcorpus", "unauthorized"]):
         score += 30
     
     # 2. 모델 학습 직접 언급 (+30)
-    if any(k in text for k in ["train", "training", "model"]):
+    if any(k in text for k in ["train", "training", "model", "llm", "generative ai", "genai", "gpt", "transformer", "weight", "fine-tune", "diffusion", "inference"]):
         score += 30
     
     # 3. 상업적 사용 (+15)
-    if any(k in text for k in ["commercial", "profit"]):
+    if any(k in text for k in ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"]):
         score += 15
     
     # 4. 저작권 관련 (뉴스에서는 Nature of Suit 820 대용으로 키워드 체크) (+15)
-    if any(k in text for k in ["copyright", "820"]):
+    if any(k in text for k in ["copyright", "infringement", "dmca", "fair use", "derivative", "exclusive", "820"]):
         score += 15
         
     # 5. 집단소송 (+10)
-    if "class action" in text:
+    if any(k in text for k in ["class action", "putative class", "representative"]):
         score += 10
 
     return min(score, 100)
@@ -101,23 +102,24 @@ def calculate_case_risk_score(case: CLCaseSummary) -> int:
     text = f"{case.extracted_ai_snippet or ''} {case.extracted_causes or ''}".lower()
 
     # 1. 무단 데이터 수집 명시 (+30)
-    if any(k in text for k in ["scrape", "crawl", "ingest"]):
+    if any(k in text for k in ["scrape", "crawl", "ingest", "harvest", "mining", "extraction", "bulk", "collection", "robots.txt", "common crawl", "laion", "the pile", "bookcorpus", "unauthorized"]):
         score += 30
     
     # 2. 모델 학습 직접 언급 (+30)
-    if any(k in text for k in ["train", "training", "model"]):
+    if any(k in text for k in ["train", "training", "model", "llm", "generative ai", "genai", "gpt", "transformer", "weight", "fine-tune", "diffusion", "inference"]):
         score += 30
     
     # 3. 상업적 사용 (+15)
-    if any(k in text for k in ["commercial", "profit"]):
+    if any(k in text for k in ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"]):
         score += 15
     
     # 4. 저작권 소송 (Nature = 820) (+15)
-    if case.nature_of_suit and "820" in case.nature_of_suit:
+    # RECAP의 경우 Nature of Suit 코드를 우선하며, 텍스트에서도 저작권 침해 쟁점을 확인합니다.
+    if (case.nature_of_suit and "820" in case.nature_of_suit) or any(k in text for k in ["copyright", "infringement", "dmca", "fair use", "derivative", "exclusive"]):
         score += 15
         
     # 5. 집단소송 (+10)
-    if "class action" in text:
+    if any(k in text for k in ["class action", "putative class", "representative"]):
         score += 10
 
     return min(score, 100)
@@ -180,13 +182,17 @@ def render_markdown(
         lines.append("| No. | 기사일자⬇️ | 제목 | 소송번호 | 소송사유 | 위험도 예측 점수 |")
         lines.append(_md_sep(6))
 
-        for idx, s in enumerate(lawsuits, start=1):
+        # 위험도 점수 기준으로 정렬 (위험도 내림차순, 동일 점수 시 날짜 내림차순)
+        scored_lawsuits = []
+        for s in lawsuits:
+            risk_score = calculate_news_risk_score(s.article_title or s.case_title, s.reason)
+            scored_lawsuits.append((risk_score, s))
+        
+        scored_lawsuits.sort(key=lambda x: (x[0], x[1].update_or_filed_date or ""), reverse=True)
+
+        for idx, (risk_score, s) in enumerate(scored_lawsuits, start=1):
             article_url = s.article_urls[0] if getattr(s, "article_urls", None) else ""
             title_cell = _mdlink(s.article_title or s.case_title, article_url)
-
-            risk_score = calculate_news_risk_score(
-                s.article_title or s.case_title, s.reason
-            )
 
             lines.append(
                 f"| {idx} | "
@@ -215,40 +221,37 @@ def render_markdown(
         )
         lines.append(_md_sep(14))
         
-        # 최근 업데이트 기준 내림차순 정렬
-        sorted_cases = sorted(
-            cl_cases,
-            key=lambda x: x.recent_updates or "",
-            reverse=True
-        )
+        # 위험도 점수 기준으로 정렬 (위험도 내림차순, 동일 점수 시 날짜 내림차순)
+        scored_cases = []
+        for c in cl_cases:
+            # 최종 스코어링 소스 텍스트 결정
+            ext_causes = c.extracted_causes
+            ext_snippet = c.extracted_ai_snippet
+            if c.docket_id in doc_map:
+                doc = doc_map[c.docket_id]
+                ext_causes = doc.extracted_causes or ext_causes
+                ext_snippet = doc.extracted_ai_snippet or ext_snippet
+            
+            # 위험도 계산용 임시 객체 (원본 보호)
+            c_copy = copy.copy(c)
+            c_copy.extracted_ai_snippet = ext_snippet
+            c_copy.extracted_causes = ext_causes
+            score = calculate_case_risk_score(c_copy)
+            scored_cases.append((score, c, ext_causes, ext_snippet))
+            
+        scored_cases.sort(key=lambda x: (x[0], x[1].recent_updates or ""), reverse=True)
 
-        for idx, c in enumerate(sorted_cases, start=1):             
+        for idx, (score, c, extracted_causes, extracted_ai_snippet) in enumerate(scored_cases, start=1):             
                 slug = _slugify_case_name(c.case_name)
                 docket_url = f"https://www.courtlistener.com/docket/{c.docket_id}/{slug}/"
       
                 complaint_doc_no = c.complaint_doc_no
                 complaint_link = c.complaint_link
-                extracted_causes = c.extracted_causes
-                extracted_ai_snippet = c.extracted_ai_snippet   
-                
-                score_source_text = f"{extracted_ai_snippet} {extracted_causes}".lower()
                 
                 if c.docket_id in doc_map:
                     doc = doc_map[c.docket_id]
                     complaint_doc_no = doc.doc_number or doc.doc_type
                     complaint_link = doc.document_url or doc.pdf_url
-                    # FIX: 소송이유 / AI학습 핵심주장도 CLDocument 기준으로 덮어쓰기
-                    extracted_causes = doc.extracted_causes or extracted_causes
-                    extracted_ai_snippet = doc.extracted_ai_snippet or extracted_ai_snippet
-
-                    # 위험도 재계산: CLDocument 기준
-                    score_source_text = f"{extracted_ai_snippet} {extracted_causes}".lower()
-
-                # NEW: 텍스트 기반 직접 점수 계산 (CLDocument 우선 반영)
-                temp_case = c
-                temp_case.extracted_ai_snippet = extracted_ai_snippet
-                temp_case.extracted_causes = extracted_causes
-                score = calculate_case_risk_score(temp_case)
              
                 if c.court_short_name and c.court_api_url:
                     court_display = _mdlink(c.court_short_name, c.court_api_url)
@@ -344,13 +347,13 @@ def render_markdown(
     lines.append("")
 
     lines.append("### 🧮 점수 산정 기준")
-    lines.append("| 항목 | 조건 | 점수 |")
+    lines.append("| 항목 | 조건 (주요 키워드) | 점수 |")
     lines.append("|---|---|---|")
-    lines.append("| 무단 데이터 수집 명시 | scrape / crawl / ingest | +30 |")
-    lines.append("| 모델 학습 직접 언급 | train / training / model | +30 |")
-    lines.append("| 상업적 사용 | commercial / profit | +15 |")
-    lines.append("| 저작권 소송 (820) | Nature = 820 | +15 |")
-    lines.append("| 집단소송 | class action | +10 |")
+    lines.append("| 무단 데이터 수집 명시 | scrape, crawl, ingest, unauthorized 등 | +30 |")
+    lines.append("| 모델 학습 직접 언급 | train, model, llm, generative ai, gpt 등 | +30 |")
+    lines.append("| 상업적 사용 | commercial, profit, monetiz, revenue 등 | +15 |")
+    lines.append("| 저작권 소송/쟁점 | Nature=820, copyright, infringement, dmca 등 | +15 |")
+    lines.append("| 집단소송 | class action, putative class 등 | +10 |")
     lines.append("")
 
     lines.append("</details>\n")
