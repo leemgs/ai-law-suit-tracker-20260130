@@ -74,7 +74,7 @@ def comment_and_close_issue(owner: str, repo: str, token: str, issue_number: int
 
  
 # =========================================================
-# NEW: Issue 댓글 조회 (base snapshot 확보용)
+# NEW: Issue 댓글 조회 (baseline 확보용)
 # =========================================================
 def list_comments(owner: str, repo: str, token: str, issue_number: int) -> list[dict]:
     url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
