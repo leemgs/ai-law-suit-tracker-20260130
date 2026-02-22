@@ -5,8 +5,7 @@ import re
 import copy
 from .extract import Lawsuit
 from .courtlistener import CLDocument, CLCaseSummary
-from .utils import debug_log
-
+from .utils import debug_log, slugify_case_name
 
 def _esc(s: str) -> str:
     s = str(s or "").strip()
@@ -46,12 +45,7 @@ def _short(val: str, limit: int = 140) -> str:
 # slug 변환
 # =====================================================
 def _slugify_case_name(name: str) -> str:
-    name = (name or "").lower()
-    name = name.replace("v.", "v")
-    name = re.sub(r"[^a-z0-9\s-]", "", name)
-    name = re.sub(r"\s+", "-", name)
-    name = re.sub(r"-+", "-", name)
-    return name.strip("-")
+    return slugify_case_name(name)
 
 
 # =====================================================
@@ -168,8 +162,8 @@ def render_markdown(
         )[:3]
 
         for idx, c in enumerate(top_cases, start=1):
-            update_date = _esc(c.recent_updates or "미확인")
-            lines.append(f"({idx}) {update_date}, {_esc(c.case_name)}")
+            update_date = c.recent_updates if c.recent_updates != "미확인" else ""
+            lines.append(f"({idx}) {_esc(update_date or '미확인')}, {_esc(c.case_name)}")
             lines.append(f"   - {_short(c.extracted_ai_snippet, 120)}")
             lines.append("")
 
@@ -239,7 +233,7 @@ def render_markdown(
             score = calculate_case_risk_score(c_copy)
             scored_cases.append((score, c, ext_causes, ext_snippet))
             
-        scored_cases.sort(key=lambda x: (x[0], x[1].recent_updates or ""), reverse=True)
+        scored_cases.sort(key=lambda x: (x[0], x[1].recent_updates if x[1].recent_updates != "미확인" else ""), reverse=True)
 
         for idx, (score, c, extracted_causes, extracted_ai_snippet) in enumerate(scored_cases, start=1):             
                 slug = _slugify_case_name(c.case_name)
@@ -266,7 +260,7 @@ def render_markdown(
                 if complaint_link:
                     complaint_link_display = _mdlink("📄", complaint_link)
                 else:
-                    complaint_link_display = "None"
+                    complaint_link_display = "-"
 
                 # =====================================================
                 # NEW: RECAP 테이블 로그 출력

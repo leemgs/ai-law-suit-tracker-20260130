@@ -43,8 +43,8 @@ def extract_ai_training_snippet(text: str, max_len: int = 280) -> str:
         if score:
             scored.append((score, s))
     if not scored:
-        # fallback: 키워드만이라도 있는 구간
-        m = re.search(r".{0,80}(training\s+data|dataset|scrap(?:e|ing)|pirat(?:ed|ing)|unauthorized).{0,180}", text, re.I)
+        # fallback: 키워드만이라도 있는 구간 (re.DOTALL 추가하여 줄바꿈 대응)
+        m = re.search(r".{0,80}(training\s+data|dataset|scrap(?:e|ing)|pirat(?:ed|ing)|unauthorized).{0,180}", text, re.I | re.DOTALL)
         if m:
             sn = re.sub(r"\s+", " ", m.group(0)).strip()
             return (sn[:max_len] + "…") if len(sn) > max_len else sn
@@ -55,15 +55,25 @@ def extract_ai_training_snippet(text: str, max_len: int = 280) -> str:
 
 def extract_parties_from_caption(text: str) -> tuple[str, str]:
     # 흔한 캡션 패턴: "PLAINTIFF, v. DEFENDANT,"
+    # 캡션은 보통 문서 상단에 있으므로 앞부분만 검사
     cap = text[:2500]
-    m = re.search(r"([A-Z][A-Z0-9 ,.&'\-]{2,}?)\s*,\s*(?:et\s+al\.)?\s*Plaintiff[s]?\s*,?\s*v\.?\s*([A-Z][A-Z0-9 ,.&'\-]{2,}?)\s*,\s*(?:Defendant[s]?|\b)", cap, re.I)
+    
+    # 1. 정교한 패턴: "PLAINTIFF_NAME, [et al.,] Plaintiff(s), v. DEFENDANT_NAME, [et al.,] Defendant(s)"
+    # [A-Z0-9]로 시작하고 특수문자 포함 가능하도록 개선
+    m = re.search(r"([A-Z0-9][A-Z0-9 ,.&'\-]{2,}?)\s*,\s*(?:et\s+al\.)?\s*Plaintiff[s]?\s*,?\s*v\.?\s*([A-Z0-9][A-Z0-9 ,.&'\-]{2,}?)\s*,\s*(?:Defendant[s]?|\b)", cap, re.I)
     if m:
         p = re.sub(r"\s+", " ", m.group(1)).strip(" ,")
         d = re.sub(r"\s+", " ", m.group(2)).strip(" ,")
-        return p, d
+        # 법원 이름 등이 잡히는 것 방지 (보통 DISTRICT COURT 등)
+        if "DISTRICT" not in p.upper() and "COURT" not in p.upper():
+            return p, d
 
-    # 더 단순: "X v. Y"
-    m2 = re.search(r"([A-Z][A-Za-z0-9 ,.&'\-]{2,})\s+v\.?\s+([A-Z][A-Za-z0-9 ,.&'\-]{2,})", cap)
+    # 2. 더 단순: "X v. Y" (대소문자 구분 없이 검색하되, 결과는 정리)
+    m2 = re.search(r"([A-Z0-9][A-Za-z0-9 ,.&'\-]{2,})\s+v\.?\s+([A-Z0-9][A-Za-z0-9 ,.&'\-]{2,})", cap, re.I)
     if m2:
-        return m2.group(1).strip(), m2.group(2).strip()
+        p2 = m2.group(1).strip()
+        d2 = m2.group(2).strip()
+        if "DISTRICT" not in p2.upper() and "COURT" not in p2.upper():
+            return p2, d2
+            
     return "미확인", "미확인"

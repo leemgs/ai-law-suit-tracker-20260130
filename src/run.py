@@ -10,7 +10,7 @@ from .render import render_markdown
 from .github_issue import find_or_create_issue, create_comment, close_other_daily_issues
 from .github_issue import list_comments
 from .slack import post_to_slack
-from .utils import debug_log
+from .utils import debug_log, slugify_case_name
 from .courtlistener import (
     search_recent_documents,
     build_complaint_documents_from_hits,
@@ -91,12 +91,17 @@ def main() -> None:
     
     # =====================================================
     # FIX: RECAP 문서 건수 계산 방식 수정
-    # 기존: len(cl_docs)
-    # 문제: HTML fallback 등으로 CLCaseSummary에만 complaint_link가 있고
-    #       CLDocument가 생성되지 않는 경우 KPI가 0으로 나옴
-    # 해결: CLCaseSummary 기준으로 complaint_link 존재 여부 카운트
+    # 해결: cl_docs에 있는 것 + cl_cases 중 complaint_link가 있는 Docket ID 합산
     # =====================================================
-    recap_doc_count = len(cl_docs)
+    unique_dockets_with_docs = set()
+    for d in cl_docs:
+        if d.docket_id:
+            unique_dockets_with_docs.add(d.docket_id)
+    for c in cl_cases:
+        if c.complaint_link and c.docket_id:
+            unique_dockets_with_docs.add(c.docket_id)
+    
+    recap_doc_count = len(unique_dockets_with_docs)
 
     # 3) 렌더링
     md = render_markdown(
@@ -413,9 +418,8 @@ def main() -> None:
                     f"• {date} | <{docket_url}|{name}>"
                 )
             elif docket_id:
-                # slug 생성 (GitHub 이슈와 동일 구조 맞추기)
-                # case_name → slug 변환
-                slug = re.sub(r"[^a-zA-Z0-9]+", "-", name).strip("-").lower()
+                # slug 생성 (utils의 공통 함수 사용)
+                slug = slugify_case_name(name)
 
                 docket_url = (
                     f"https://www.courtlistener.com/docket/"
