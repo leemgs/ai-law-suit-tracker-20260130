@@ -67,8 +67,8 @@ def apply_deduplication(md: str, comments: List[dict]) -> str:
     for comment in comments:
         body = comment.get("body") or ""
         
-        # News 처리 (이전 이름 '## 📰 News'와 새 이름 '## 📰 AI Regulation News' 모두 지원)
-        news_section_base = extract_section(body, "## 📰 AI Regulation News") or extract_section(body, "## 📰 News")
+        # News 처리 (이전 이름 '## 📰 News'와 새 이름 '## 📰 AI Suit News' 모두 지원)
+        news_section_base = extract_section(body, "## 📰 AI Suit News") or extract_section(body, "## 📰 News")
         h_news, r_news, _ = parse_table(news_section_base)
         if "제목" in h_news:
             idx = h_news.index("제목")
@@ -87,7 +87,7 @@ def apply_deduplication(md: str, comments: List[dict]) -> str:
 
     # 2) 현재 Markdown 처리 (News - 새 이름 사용)
     current_md = md
-    news_section = extract_section(current_md, "## 📰 AI Regulation News")
+    news_section = extract_section(current_md, "## 📰 AI Suit News")
     n_headers, n_rows, n_table_meta = parse_table(news_section)
 
     new_article_count = 0
