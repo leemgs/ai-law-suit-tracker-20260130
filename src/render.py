@@ -55,7 +55,7 @@ RISK_CRITERIA = [
     ("무단 데이터 수집 명시", ["scrape", "crawl", "ingest", "harvest", "mining", "extraction", "bulk", "collection", "robots.txt", "common crawl", "laion", "the pile", "bookcorpus", "unauthorized"], 30),
     ("모델 학습 직접 언급", ["train", "training", "model", "llm", "generative ai", "genai", "gpt", "transformer", "weight", "fine-tune", "diffusion", "inference"], 30),
     ("상업적 사용", ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"], 15),
-    ("저작권 관련/쟁점", ["copyright", "infringement", "dmca", "fair use", "derivative", "exclusive", "820"], 15),
+    ("저작권 관련/쟁점", ["copyright", "infringement", "dmca", "fair use", "derivative", "exclusive", "820"], 30),
     ("집단소송", ["class action", "putative class", "representative"], 10),
     ("데이터 제공 계약/협력", ["contract", "licensing", "agreement", "partnership", "계약", "협력", "제휴"], -10),
 ]
@@ -108,10 +108,10 @@ def calculate_case_risk_score(case: CLCaseSummary) -> int:
     if any(k in text for k in ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"]):
         score += 15
     
-    # 4. 저작권 소송 (Nature = 820) (+15)
+    # 4. 저작권 소송 (Nature = 820) (+30)
     # RECAP의 경우 Nature of Suit 코드를 우선하며, 텍스트에서도 저작권 침해 쟁점을 확인합니다.
     if (case.nature_of_suit and "820" in case.nature_of_suit) or any(k in text for k in ["copyright", "infringement", "dmca", "fair use", "derivative", "exclusive"]):
-        score += 15
+        score += 30
         
     # 5. 집단소송 (+10)
     if any(k in text for k in ["class action", "putative class", "representative"]):
@@ -156,8 +156,11 @@ def render_markdown(
         debug_log("'최근 소송 Top 3 (업데이트 날짜 기준)' is printed.")        
         lines.append("## 🧠 최근 소송 Top 3 (업데이트 날짜 기준)\n")
         
+        # 820 Copyright 항목들만 필터링
+        copyright_cases = [c for c in cl_cases if c.nature_of_suit and "820" in c.nature_of_suit]
+        
         top_cases = sorted(
-            cl_cases,
+            copyright_cases,
             key=lambda x: x.recent_updates if x.recent_updates != "미확인" else "",
             reverse=True
         )[:3]
