@@ -52,11 +52,12 @@ def _slugify_case_name(name: str) -> str:
 # 위험도 기준 정의
 # =====================================================
 RISK_CRITERIA = [
-    ("무단 데이터 수집 명시", ["scrape", "crawl", "ingest", "harvest", "mining", "extraction", "bulk", "collection", "robots.txt", "common crawl", "laion", "the pile", "bookcorpus", "unauthorized"], 30),
-    ("모델 학습 직접 언급", ["820", "train", "training", "model", "llm", "generative ai", "genai", "gpt", "transformer", "weight", "fine-tune", "diffusion", "inference"], 30),
-    ("저작권 관련/쟁점", ["copyright", "infringement", "dmca", "fair use", "derivative", "exclusive"], 15),
-    ("상업적 사용", ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"], 15),
-    ("집단소송", ["class action", "putative class", "representative"], 10),
+    ("무단 데이터 수집 명시", ["scrape", "crawl", "ingest", "harvest", "mining", "extraction", "bulk", "collection", "robots.txt", "common crawl", "laion", "the pile", "bookcorpus", "unauthorized"], 25),
+    ("모델 학습 직접 언급", ["train", "training", "model", "llm", "generative ai", "genai", "gpt", "transformer", "weight", "fine-tune", "diffusion", "inference"], 20),
+    ("저작권 직접 언급", ["820", "3820", "copyright"], 30),
+    ("저작권 관련/쟁점", ["infringement", "dmca", "fair use", "derivative", "exclusive"], 10),
+    ("상업적 사용", ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"], 10),
+    ("집단소송", ["class action", "putative class", "representative"], 5),
     ("데이터 제공 계약/협력", ["contract", "licensing", "agreement", "partnership", "계약", "협력", "제휴"], -10),
 ]
 
@@ -95,28 +96,38 @@ def format_risk(score: int) -> str:
 def calculate_case_risk_score(case: CLCaseSummary) -> int:
     score = 0
     text = f"{case.extracted_ai_snippet or ''} {case.extracted_causes or ''}".lower()
+    nature = (case.nature_of_suit or "").lower()
 
-    # 1. 무단 데이터 수집 명시 (+30)
+    # 1. 무단 데이터 수집 명시 (+25)
     if any(k in text for k in ["scrape", "crawl", "ingest", "harvest", "mining", "extraction", "bulk", "collection", "robots.txt", "common crawl", "laion", "the pile", "bookcorpus", "unauthorized"]):
+        score += 25
+    
+    # 2. 모델 학습 직접 언급 (+20)
+    if any(k in text for k in ["train", "training", "model", "llm", "generative ai", "genai", "gpt", "transformer", "weight", "fine-tune", "diffusion", "inference"]):
+        score += 20
+    
+    # 3. 저작권 직접 언급 (+30)
+    # NOS 코드 820, 3820 또는 copyright 키워드
+    if "820" in nature or "3820" in nature or any(k in text for k in ["820", "3820", "copyright"]):
         score += 30
-    
-    # 2. 모델 학습 직접 언급 (+30)
-    if (case.nature_of_suit and "820" in case.nature_of_suit) or any(k in text for k in ["train", "training", "model", "llm", "generative ai", "genai", "gpt", "transformer", "weight", "fine-tune", "diffusion", "inference"]):
-        score += 30
-    
-    # 3. 상업적 사용 (+15)
-    if any(k in text for k in ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"]):
-        score += 15
-    
-    # 4. 저작권 소송/쟁점 (+15)
-    if any(k in text for k in ["copyright", "infringement", "dmca", "fair use", "derivative", "exclusive"]):
-        score += 15
-        
-    # 5. 집단소송 (+10)
-    if any(k in text for k in ["class action", "putative class", "representative"]):
+
+    # 4. 저작권 관련/쟁점 (+10)
+    if any(k in text for k in ["infringement", "dmca", "fair use", "derivative", "exclusive"]):
         score += 10
 
-    return min(score, 100)
+    # 5. 상업적 사용 (+10)
+    if any(k in text for k in ["commercial", "profit", "monetiz", "revenue", "subscription", "enterprise", "paid", "for-profit"]):
+        score += 10
+        
+    # 6. 집단소송 (+5)
+    if any(k in text for k in ["class action", "putative class", "representative"]):
+        score += 5
+
+    # 7. 데이터 제공 계약/협력 (-10)
+    if any(k in text for k in ["contract", "licensing", "agreement", "partnership", "계약", "협력", "제휴"]):
+        score -= 10
+
+    return max(0, min(score, 100))
 
 
 # =====================================================
@@ -196,7 +207,7 @@ def render_markdown(
             risk_score, keywords = calculate_news_risk_score(s.article_title or s.case_title, s.reason)
             scored_lawsuits.append((risk_score, keywords, s))
         
-        scored_lawsuits.sort(key=lambda x: (x[2].update_or_filed_date or "", x[0]), reverse=True)
+        scored_lawsuits.sort(key=lambda x: (x[0], x[2].update_or_filed_date or ""), reverse=True)
 
         for idx, (risk_score, keywords, s) in enumerate(scored_lawsuits, start=1):
             article_url = s.article_urls[0] if getattr(s, "article_urls", None) else ""

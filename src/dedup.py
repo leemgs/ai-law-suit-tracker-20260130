@@ -237,9 +237,20 @@ def generate_consolidated_report(comments: List[dict]) -> str:
     if unique_news:
         lines.append(news_header_line)
         lines.append(news_sep_line)
+        
+        # 위험도 예측 점수 기준으로 내림차순 정렬
+        news_rows = list(unique_news.values())
+        if "위험도 예측 점수" in news_header_cols:
+            risk_idx = news_header_cols.index("위험도 예측 점수")
+            def get_news_risk_score(row):
+                # "🟡 45"와 같은 문자열에서 숫자만 추출
+                m = re.search(r"(\d+)", row[risk_idx])
+                return int(m.group(1)) if m else 0
+            news_rows.sort(key=get_news_risk_score, reverse=True)
+
         no_idx = news_header_cols.index("No.") if "No." in news_header_cols else None
-        for i, r in enumerate(unique_news.values(), 1):
-            row = list(r)
+        for i, row_data in enumerate(news_rows, 1):
+            row = list(row_data)
             if no_idx is not None:
                 row[no_idx] = str(i)
             lines.append("| " + " | ".join(row) + " |")
@@ -252,9 +263,20 @@ def generate_consolidated_report(comments: List[dict]) -> str:
     if unique_cases:
         lines.append(case_header_line)
         lines.append(case_sep_line)
+        
+        # 위험도 기준으로 내림차순 정렬
+        case_rows = list(unique_cases.values())
+        if "위험도" in case_header_cols:
+            risk_idx = case_header_cols.index("위험도")
+            def get_case_risk_score(row):
+                # "🟡 45"와 같은 문자열에서 숫자만 추출
+                m = re.search(r"(\d+)", row[risk_idx])
+                return int(m.group(1)) if m else 0
+            case_rows.sort(key=get_case_risk_score, reverse=True)
+
         no_idx = case_header_cols.index("No.") if "No." in case_header_cols else None
-        for i, r in enumerate(unique_cases.values(), 1):
-            row = list(r)
+        for i, row_data in enumerate(case_rows, 1):
+            row = list(row_data)
             if no_idx is not None:
                 row[no_idx] = str(i)
             lines.append("| " + " | ".join(row) + " |")
