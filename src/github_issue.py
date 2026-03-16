@@ -30,6 +30,8 @@ def find_or_create_issue(owner: str, repo: str, token: str, title: str, label: s
             "| **Google News RSS** | Google News에서 제공하는 RSS(Really Simple Syndication) 피드로, 특정 키워드나 주제에 대한 최신 뉴스를 자동으로 수집하고 구독할 수 있는 서비스입니다. |\n"
             "| **RECAP** | PACER(유료 미국 연방법원 전자기록 시스템)의 데이터를 무료로 접근하고 효율적으로 활용하기 위한 오픈소스 프로젝트입니다. 소송 데이터 수집·추출·분석에 초점을 맞추고 있습니다. |\n"
             "| **CourtListener** | RECAP 프로젝트를 통해 PACER 데이터를 수집·저장하여, 미국 연방 및 주 법원의 판결 기록을 무료로 검색하고 분석할 수 있도록 제공하는 플랫폼입니다. |\n\n"
+            "<details>\n"
+            "<summary><b>⚖️ Nature of Suit (NOS) 코드 안내 (클릭하여 펼치기)</b></summary>\n\n"
             "### ⚖️ Nature of Suit (NOS) 코드 안내\n"
             "소송의 성격 및 사건 유형을 나타내는 코드입니다.\n\n"
             "| 분류체계 |NOS 코드 | 의미 |\n"
@@ -50,7 +52,9 @@ def find_or_create_issue(owner: str, repo: str, token: str, title: str, label: s
             "| Cause of Action |**17:1201** | Copyright Infringement (DMCA) |\n"
             "| Cause of Action |**17:1202** | Copyright Infringement (DMCA) |\n\n"            
             "---\n\n"
-            "> 💡 **참고:** 'Nature of Suit': 사건 유형, 'Cause of Actoin': 청구원인/법적근거, .\n"        ),
+            "> 💡 **참고:** 'Nature of Suit': 사건 유형, 'Cause of Action': 청구원인/법적근거.\n"
+            "</details>\n"
+        ),
         "labels": [label]
     }    
     r2 = requests.post(url, headers=_headers(token), json=payload, timeout=20)
