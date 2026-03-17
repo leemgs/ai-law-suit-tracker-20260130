@@ -96,7 +96,8 @@ def apply_deduplication(md: str, comments: List[dict]) -> str:
     if n_headers and "제목" in n_headers:
         title_idx = n_headers.index("제목")
         no_idx = n_headers.index("No.") if "No." in n_headers else None
-        date_idx = n_headers.index("기사일자⬇️") if "기사일자⬇️" in n_headers else None
+        date_idx = n_headers.index("기사일자") if "기사일자" in n_headers else None
+        risk_idx = n_headers.index("위험도⬇️") if "위험도⬇️" in n_headers else None
 
         header_line, separator_line = n_table_meta
         non_skip_rows = []
@@ -131,6 +132,7 @@ def apply_deduplication(md: str, comments: List[dict]) -> str:
     if c_headers and "도켓번호" in c_headers:
         docket_idx = c_headers.index("도켓번호")
         no_idx = c_headers.index("No.") if "No." in c_headers else None
+        risk_idx = c_headers.index("위험도⬇️") if "위험도⬇️" in c_headers else None
         status_idx = c_headers.index("상태") if "상태" in c_headers else None
         case_idx = c_headers.index("케이스명") if "케이스명" in c_headers else None
 
@@ -240,8 +242,8 @@ def generate_consolidated_report(comments: List[dict]) -> str:
         
         # 위험도 예측 점수 기준으로 내림차순 정렬
         news_rows = list(unique_news.values())
-        if "위험도 예측 점수" in news_header_cols:
-            risk_idx = news_header_cols.index("위험도 예측 점수")
+        if "위험도⬇️" in news_header_cols:
+            risk_idx = news_header_cols.index("위험도⬇️")
             def get_news_risk_score(row):
                 # "🟡 45"와 같은 문자열에서 숫자만 추출
                 m = re.search(r"(\d+)", row[risk_idx])
@@ -266,8 +268,8 @@ def generate_consolidated_report(comments: List[dict]) -> str:
         
         # 위험도 기준으로 내림차순 정렬
         case_rows = list(unique_cases.values())
-        if "위험도" in case_header_cols:
-            risk_idx = case_header_cols.index("위험도")
+        if "위험도⬇️" in case_header_cols:
+            risk_idx = case_header_cols.index("위험도⬇️")
             def get_case_risk_score(row):
                 # "🟡 45"와 같은 문자열에서 숫자만 추출
                 m = re.search(r"(\d+)", row[risk_idx])

@@ -214,7 +214,7 @@ def render_markdown(
     lines.append("## 📰 AI Suit News")
     if lawsuits:
         debug_log("'News' is printed.")            
-        lines.append("| No. | 기사일자⬇️ | 제목 | 소송번호 | 조건 (주요 키워드) | 소송사유 | 위험도 예측 점수 |")
+        lines.append("| No. | 기사일자 | 제목 | 소송번호 | 조건 (주요 키워드) | 소송사유 | 위험도⬇️ |")
         lines.append(_md_sep(7))
 
         # 기사일자 기준으로 정렬 (날짜 내림차순, 동일 날짜 시 위험도 내림차순)
@@ -255,9 +255,9 @@ def render_markdown(
                 doc_map[d.docket_id] = d
         
         lines.append(
-            "| No. | 상태 | 케이스명 | 도켓번호 | Nature | 위험도 | "
+            "| No. | 상태 | 케이스명 | 도켓번호 | Nature | 위험도⬇️ | "
             "소송이유 | AI학습관련 핵심주장 | 법적 근거 | 담당판사 | 법원 | "
-            "Complaint 문서 번호 | Complaint PDF 링크 | 최근 도켓 업데이트⬇️ |"
+            "Complaint 문서 번호 | Complaint PDF 링크 | 최근 도켓 업데이트 |"
         )
         lines.append(_md_sep(14))
         
